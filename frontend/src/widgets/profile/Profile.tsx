@@ -1,146 +1,200 @@
-import { Box, ButtonBase } from "@mui/material";
-import { useNavigate } from "react-router-dom";
-import { useState } from "react";
-import ProfileCoverImage from "@shared/assets/images/profile-background.jpg";
-import SocialIcon from "@shared/assets/icons/icon-social.svg";
-import BackIcon from "@shared/assets/icons/icon-back.svg?react";
-import { alphaColors, colors, transitions } from "@shared/styles";
-import type { User } from "@shared/model";
-import { EditProfileModal } from "@features/profile";
+import { Box, ButtonBase } from '@mui/material'
+import type { Theme } from '@mui/material'
+import type { SystemStyleObject } from '@mui/system'
+import ProfileCoverImage from '@shared/assets/images/profile-background.jpg'
+import SocialIcon from '@shared/assets/icons/icon-social.svg'
+import MessageIcon from '@shared/assets/icons/icon-message.svg?react'
+import { colors, transitions } from '@shared/styles'
+import { resolveAssetUrl } from '@shared/config'
+import { plural } from '@shared/lib'
+import { useFollowStatus, useToggleFollow } from '@features/follows'
+import { useNavigate } from 'react-router-dom'
+import { routes } from '@shared/config/routes'
+import type { User } from '@shared/model'
 
 type Props = {
-  user: User;
-};
+  user: User
+  isOwnProfile: boolean
+  onEditClick: () => void
+}
 
-export const Profile = ({ user }: Props) => {
-  const [isEdit, setIsEdit] = useState(false);
-  const navigate = useNavigate();
-  const handleNavigateBack = () => {
-    if (window.history.length > 1) {
-      navigate(-1);
-    } else {
-      navigate("/");
-    }
-  };
+export const Profile = ({ user, isOwnProfile, onEditClick }: Props) => {
+  const followStatus = useFollowStatus(user.id, !isOwnProfile)
+  const toggleFollow = useToggleFollow(user.id)
+  const navigate = useNavigate()
+
+  const isFollowing = followStatus.data?.isFollowing ?? false
+  const followLabel = isFollowing ? 'Отписаться' : 'Подписаться'
+
+  const handleToggleFollow = () => {
+    if (toggleFollow.isPending) return
+    toggleFollow.mutate(isFollowing)
+  }
 
   return (
-    <>
-      <Box>
-        <ButtonBase
-          onClick={handleNavigateBack}
-          sx={{
-            position: "absolute",
-            top: 24,
-            left: 24,
-            zIndex: 1,
-            width: 32,
-            height: 32,
-            borderRadius: "50%",
-            color: colors.surface,
-            backgroundColor: alphaColors.imageRemoveBg,
-            transition: transitions.background,
-            "&:hover": {
-              backgroundColor: alphaColors.imageRemoveHoverBg,
-            },
-          }}
-        >
-          <Box
-            component={BackIcon}
-            sx={{
-              width: 24,
-              height: 24,
-              color: "inherit",
-              objectFit: "cover",
-            }}
-          />
-        </ButtonBase>
-
-        <Box
-          sx={{
-            width: "100%",
-            height: 200,
-            backgroundImage: `url(${user.coverImage ? user.coverImage : ProfileCoverImage})`,
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-            backgroundRepeat: "no-repeat",
-            border: `1px solid ${colors.border}`,
-            borderBottom: 0,
-            borderRadius: "16px 16px 0 0",
-          }}
-        />
-      </Box>
-
+    <Box
+      sx={{
+        borderRight: `1px solid ${colors.border}`,
+        borderLeft: `1px solid ${colors.border}`,
+      }}
+    >
       <Box
         sx={{
-          position: "relative",
-          p: 3,
-          pb: 2,
-          backgroundColor: "white",
-          display: "flex",
-          flexDirection: "column",
-          gap: 1.25,
-          border: `1px solid ${colors.border}`,
-          borderTop: `0px solid ${colors.border}`,
-          borderRadius: "0px 0px 16px 16px",
+          ...coverSx,
+          backgroundImage: `url(${
+            user.coverImage ? resolveAssetUrl(user.coverImage) : ProfileCoverImage
+          })`,
         }}
-      >
+      />
+
+      <Box sx={cardSx}>
         <Box
           component="img"
-          src={user.avatar ? user.avatar : SocialIcon}
-          sx={{
-            display: "flex",
-            position: "absolute",
-            transform: "translateY(-75%)",
-            border: `1px solid ${colors.border}`,
-            borderRadius: "50%",
-            width: 128,
-            height: 128,
-          }}
+          src={user.avatar ? resolveAssetUrl(user.avatar) : SocialIcon}
+          sx={avatarSx}
         />
 
-        <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
-          <ButtonBase
-            onClick={() => setIsEdit(true)}
-            sx={{
-              height: "40px",
-              fontSize: 14,
-              p: 0.5,
-              mt: -1,
-              border: `1px solid ${colors.border}`,
-              backgroundColor: "white",
-              borderRadius: 4,
-              color: colors.textSoft,
-              transition: transitions.background,
-              "&:hover": {
-                backgroundColor: colors.inputBg,
-              },
-            }}
-          >
-            Редактировать
-          </ButtonBase>
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+          {isOwnProfile ? (
+            <ButtonBase
+              onClick={onEditClick}
+              sx={{
+                ...actionButtonSx,
+                color: colors.accent,
+                borderColor: colors.accent,
+              }}
+            >
+              Редактировать
+            </ButtonBase>
+          ) : (
+            <>
+              <ButtonBase
+                sx={messageButtonSx}
+                onClick={() => navigate(routes.chatWith(user.id))}
+              >
+                <Box component={MessageIcon} sx={{ width: 20, height: 20 }} />
+              </ButtonBase>
+              <ButtonBase
+                onClick={handleToggleFollow}
+                disabled={toggleFollow.isPending || followStatus.isLoading}
+                sx={isFollowing ? actionButtonSx : primaryActionButtonSx}
+              >
+                {followLabel}
+              </ButtonBase>
+            </>
+          )}
         </Box>
 
-        <Box
-          sx={{
-            display: "flex",
-            flexDirection: "column",
-          }}
-        >
-          <Box sx={{ fontSize: 22, fontWeight: "700" }}>{user.username}</Box>
-          <Box sx={{ fontSize: 15, color: colors.textMuted }}>
-            @{user.tag ? user.tag : "first.user"}
+        <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+          <Box sx={{ fontSize: 22, fontWeight: '700' }}>{user.username}</Box>
+          <Box sx={{ fontSize: 15, color: colors.textMuted }}>@{user.tag}</Box>
+        </Box>
+
+        {user.bio && <Box sx={{ fontSize: 15 }}>{user.bio}</Box>}
+
+        <Box sx={{ display: 'flex', gap: 2, fontSize: 14 }}>
+          <Box>
+            <Box component="span" sx={{ fontWeight: '700' }}>
+              {user.followersCount}{' '}
+            </Box>
+            <Box component="span" sx={{ color: colors.textMuted }}>
+              {plural(user.followersCount ?? 0, {
+                one: 'подписчик',
+                few: 'подписчика',
+                many: 'подписчиков',
+              })}
+            </Box>
+          </Box>
+          <Box>
+            <Box component="span" sx={{ fontWeight: '700' }}>
+              {user.followingCount}{' '}
+            </Box>
+            <Box component="span" sx={{ color: colors.textMuted }}>
+              {plural(user.followingCount ?? 0, {
+                one: 'подписка',
+                few: 'подписки',
+                many: 'подписок',
+              })}
+            </Box>
           </Box>
         </Box>
-
-        <Box sx={{ fontSize: 15 }}>{user.bio}</Box>
-
-        <Box sx={{ display: "flex", gap: 1, fontSize: 14 }}>
-          <Box>0 подписок</Box>
-          <Box>0 подписчиков</Box>
-        </Box>
       </Box>
+    </Box>
+  )
+}
 
-      {isEdit && <EditProfileModal setIsEdit={setIsEdit} user={user} />}
-    </>
-  );
-};
+const coverSx: SystemStyleObject<Theme> = {
+  width: '100%',
+  height: 200,
+  backgroundSize: 'cover',
+  backgroundPosition: 'center',
+  backgroundRepeat: 'no-repeat',
+  borderBottom: 0,
+  borderRadius: 0,
+}
+
+const cardSx: SystemStyleObject<Theme> = {
+  position: 'relative',
+  p: 2,
+  pt: 3,
+  backgroundColor: colors.surface,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 1.25,
+  borderBottom: `1px solid ${colors.border}`,
+  borderRadius: 0,
+}
+
+const avatarSx: SystemStyleObject<Theme> = {
+  display: 'block',
+  position: 'absolute',
+  transform: 'translateY(-70%)',
+  border: `1px solid ${colors.border}`,
+  borderRadius: '50%',
+  width: 128,
+  height: 128,
+  objectFit: 'cover',
+}
+
+const messageButtonSx: SystemStyleObject<Theme> = {
+  width: 36,
+  height: 36,
+  borderRadius: '50%',
+  border: `1px solid ${colors.inputBorder}`,
+  backgroundColor: colors.surface,
+  color: colors.black,
+  transition: transitions.background,
+  '&:hover': {
+    backgroundColor: colors.inputBg,
+  },
+}
+
+const actionButtonSx: SystemStyleObject<Theme> = {
+  height: 36,
+  px: 2,
+  fontSize: 15,
+  fontWeight: 700,
+  border: `1px solid ${colors.textSoft}`,
+  backgroundColor: colors.surface,
+  borderRadius: 4,
+  color: colors.textSoft,
+  transition: transitions.background,
+  '&:hover': {
+    backgroundColor: colors.inputBg,
+  },
+}
+
+const primaryActionButtonSx: SystemStyleObject<Theme> = {
+  height: 36,
+  px: 2,
+  fontSize: 14,
+  fontWeight: 600,
+  border: `1px solid ${colors.accent}`,
+  backgroundColor: colors.accent,
+  borderRadius: 4,
+  color: colors.surface,
+  transition: transitions.background,
+  '&:hover': {
+    backgroundColor: colors.accentHover,
+  },
+}

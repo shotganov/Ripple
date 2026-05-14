@@ -1,13 +1,13 @@
-import { configureStore } from "@reduxjs/toolkit";
-import authReducer from "@features/auth/model/authSlice";
-import userReducer from "@entities/user/model/userSlice";
-import type { User } from "@shared/model";
+import { configureStore } from '@reduxjs/toolkit'
+import authReducer from '@features/auth/model/authSlice'
+import userReducer from '@entities/user/model/userSlice'
+import type { User } from '@shared/model'
 
-const token = localStorage.getItem("token");
-const userString = localStorage.getItem("user");
+const token = localStorage.getItem('token')
+const userString = localStorage.getItem('user')
 
-const preloadedUser: User | null = userString ? JSON.parse(userString) : null;
-const preloadedToken: string | null = token ? token : null;
+const preloadedUser: User | null = userString ? JSON.parse(userString) : null
+const preloadedToken: string | null = token ? token : null
 
 export const store = configureStore({
   reducer: {
@@ -20,7 +20,5 @@ export const store = configureStore({
     },
     user: preloadedUser,
   },
-});
+})
 
-export type RootState = ReturnType<typeof store.getState>;
-export type AppDispatch = typeof store.dispatch;

@@ -1,69 +1,119 @@
-import { Box, ButtonBase } from "@mui/material";
-import { NavLink } from "react-router-dom";
-import { breakpoints, colors, radius, transitions } from "@shared/styles";
-import { menuItems } from "./model/menuItems";
+import { Box, ButtonBase } from '@mui/material'
+import type { Theme } from '@mui/material'
+import type { SystemStyleObject } from '@mui/system'
+import { NavLink, useMatch } from 'react-router-dom'
+import { breakpoints, colors, radius, transitions } from '@shared/styles'
+import { menuItems, type SideBarMenuItem } from './model/menuItems'
+import { routes } from '@shared/config/routes'
+import { useAppSelector } from '@shared/hooks'
+import { selectUser } from '@entities/user'
 
 type SideBarNavProps = {
-  notificationsCount: number;
-};
+  userId: number
+  notificationsCount: number
+  messagesCount: number
+}
 
-export const SideBarNav = ({ notificationsCount }: SideBarNavProps) => {
+type NavItemProps = {
+  item: SideBarMenuItem
+  badgeCount: number
+}
+
+const NavItem = ({ item, badgeCount }: NavItemProps) => {
+  const isActive = !!useMatch(item.path)
+  const Icon = isActive && item.iconActive ? item.iconActive : item.icon
+
   return (
-    <>
-      {menuItems.map((item) => {
-        const Icon = item.icon;
+    <ButtonBase component={NavLink} to={item.path} sx={navItemSx}>
+      <Box sx={iconWrapSx}>
+        <Icon width={26} height={26} />
 
-        return (
-          <ButtonBase
-            key={item.path}
-            component={NavLink}
-            to={item.path}
-            sx={navItemSx}
-          >
-            <Box sx={iconWrapSx}>
-              <Icon width={24} height={24} />
+        {badgeCount > 0 && (
+          <Box component="span" sx={badgeSx}>
+            {badgeCount > 99 ? '99+' : badgeCount}
+          </Box>
+        )}
+      </Box>
+      <Box component="span" sx={{ lineHeight: 1.2, ...sxAdaptive }}>
+        {item.text}
+      </Box>
+    </ButtonBase>
+  )
+}
 
-              {item.path === "/notifications" && notificationsCount > 0 && (
-                <Box component="span" sx={badgeSx}>
-                  {notificationsCount > 99 ? "99+" : notificationsCount}
-                </Box>
-              )}
-            </Box>
-            <Box component="span" sx={{ lineHeight: 1.2, ...sxAdaptive }}>
-              {item.text}
-            </Box>
-          </ButtonBase>
-        );
-      })}
-    </>
-  );
-};
+const badgeFor = (path: string, notifications: number, messages: number) => {
+  if (path === '/notifications') return notifications
+  if (path === '/chat') return messages
+  return 0
+}
 
-const navItemSx = {
-  display: "flex",
-  justifyContent: "flex-start",
-  alignItems: "center",
-  minHeight: 60,
+export const SideBarNav = ({ userId, notificationsCount, messagesCount }: SideBarNavProps) => {
+  const user = useAppSelector(selectUser)
+  const isAdmin = user?.role === 'ADMIN'
+
+  return (
+    <Box sx={navListSx}>
+      {menuItems
+        .filter(item => {
+          if (item.adminOnly && !isAdmin) return false
+          if (item.userOnly && isAdmin) return false
+          return true
+        })
+        .map(item => {
+          if (item.path === '/profile/:id') item.path = routes.profile(userId)
+
+          return (
+            <NavItem
+              key={item.path}
+              item={item}
+              badgeCount={badgeFor(item.path, notificationsCount, messagesCount)}
+            />
+          )
+        })}
+    </Box>
+  )
+}
+
+const navListSx: SystemStyleObject<Theme> = {
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'flex-start',
+  gap: 1,
+  [breakpoints.mobile]: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    gap: 1,
+  },
+}
+
+const navItemSx: SystemStyleObject<Theme> = {
+  display: 'inline-flex',
+  alignSelf: 'flex-start',
+  width: 'fit-content',
+  justifyContent: 'flex-start',
+  alignItems: 'center',
   gap: 1.5,
-  px: 2.5,
-  borderRadius: radius.md,
-  color: colors.textSoft,
-  fontSize: 18,
+  p: 1.5,
+  pr: 3.5,
+  borderRadius: radius.pill,
+  color: colors.black,
+  fontSize: 20,
   fontWeight: 400,
-  textTransform: "none",
+  textTransform: 'none',
   transition: transitions.background,
-  backgroundColor: "transparent",
-  "& svg": {
-    display: "block",
+  backgroundColor: 'transparent',
+  '& svg': {
+    display: 'block',
     flexShrink: 0,
-    color: "inherit",
+    color: 'inherit',
   },
-  "&.active": {
-    backgroundColor: colors.activeBg,
-    color: colors.accent,
+  '&.active': {
+    fontWeight: 700,
   },
-  "&:hover": {
-    backgroundColor: colors.hoverBg,
+  '&:hover': {
+    backgroundColor: '#e7e7e8',
   },
   [breakpoints.compactSidebar]: {
     width: 48,
@@ -71,25 +121,25 @@ const navItemSx = {
     px: 0,
     minHeight: 48,
     gap: 0,
-    justifyContent: "center",
+    justifyContent: 'center',
   },
   [breakpoints.mobile]: {
-    width: 52,
-    height: 52,
-    minHeight: 52,
-    borderRadius: radius.md,
+    width: 44,
+    height: 44,
+    minHeight: 44,
+    borderRadius: radius.pill,
   },
-} as const;
+}
 
-const iconWrapSx = {
-  position: "relative",
-  width: 24,
-  height: 24,
+const iconWrapSx: SystemStyleObject<Theme> = {
+  position: 'relative',
+  width: 26,
+  height: 26,
   flexShrink: 0,
-} as const;
+}
 
-const badgeSx = {
-  position: "absolute",
+const badgeSx: SystemStyleObject<Theme> = {
+  position: 'absolute',
   top: -7,
   right: -3,
   minWidth: 16,
@@ -101,13 +151,13 @@ const badgeSx = {
   color: colors.surface,
   fontSize: 11,
   fontWeight: 700,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-} as const;
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+}
 
 const sxAdaptive = {
   [breakpoints.compactSidebar]: {
-    display: "none",
+    display: 'none',
   },
-};
+}

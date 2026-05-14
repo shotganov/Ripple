@@ -1,21 +1,22 @@
-import type { ReactNode } from "react";
-import { Box } from "@mui/material";
-import type { SxProps, Theme } from "@mui/material";
-import { alphaColors, colors, radius } from "../../styles/tokens";
+import type { ReactNode } from 'react'
+import { Box } from '@mui/material'
+import type { Theme } from '@mui/material'
+import type { SystemStyleObject } from '@mui/system'
+import { alphaColors, colors, radius } from '../../styles/tokens'
 
 type ModalContentProps = {
-  children: ReactNode;
-  width?: number | string;
-  maxWidth?: number | string | Record<string, number | string>;
-  height?: number | string | Record<string, number | string>;
-  maxHeight?: number | string | Record<string, number | string>;
-  sx?: SxProps<Theme>;
-};
+  children: ReactNode
+  width?: number | string
+  maxWidth?: number | string | Record<string, number | string>
+  height?: number | string | Record<string, number | string>
+  maxHeight?: number | string | Record<string, number | string>
+  sx?: SystemStyleObject<Theme>
+}
 
 export const ModalContent = ({
   children,
   width = 600,
-  maxWidth = "calc(100vw - 32px)",
+  maxWidth = 'calc(100vw - 32px)',
   height,
   maxHeight,
   sx,
@@ -26,9 +27,9 @@ export const ModalContent = ({
       maxWidth,
       height,
       maxHeight,
-      display: "flex",
-      flexDirection: "column",
-      overflow: "hidden",
+      display: 'flex',
+      flexDirection: 'column',
+      overflow: 'hidden',
       borderRadius: radius.lg,
       border: `1px solid ${colors.border}`,
       backgroundColor: colors.surface,
@@ -38,4 +39,4 @@ export const ModalContent = ({
   >
     {children}
   </Box>
-);
+)

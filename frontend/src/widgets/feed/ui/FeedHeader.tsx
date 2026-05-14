@@ -1,28 +1,27 @@
-import { Box, ButtonBase, Paper } from "@mui/material";
-import { colors, radius, transitions } from "@shared/styles";
-import type { FeedMode } from "../model/FeedMode";
+import { Box, ButtonBase, Paper } from '@mui/material'
+import type { Theme } from '@mui/material'
+import type { SystemStyleObject } from '@mui/system'
+import { colors, radius, transitions } from '@shared/styles'
+import { StickyTopBar } from '@shared/ui'
+import type { FeedMode } from '../model/FeedMode'
 
 type FeedTab = {
-  label: string;
-  value: FeedMode;
-};
+  label: string
+  value: FeedMode
+}
 
 type FeedHeaderProps = {
-  activeMode: FeedMode;
-  onModeChange: (mode: FeedMode) => void;
-  tabs: FeedTab[];
-};
+  activeMode: FeedMode
+  onModeChange: (mode: FeedMode) => void
+  tabs: FeedTab[]
+}
 
-export const FeedHeader = ({
-  activeMode,
-  onModeChange,
-  tabs,
-}: FeedHeaderProps) => {
+export const FeedHeader = ({ activeMode, onModeChange, tabs }: FeedHeaderProps) => {
   return (
-    <Box sx={rootSx}>
+    <StickyTopBar>
       <Paper elevation={0} sx={tabsPaperSx}>
-        {tabs.map((tab) => {
-          const active = activeMode === tab.value;
+        {tabs.map(tab => {
+          const active = activeMode === tab.value
 
           return (
             <ButtonBase
@@ -38,64 +37,56 @@ export const FeedHeader = ({
                 component="span"
                 sx={{
                   ...tabLabelSx,
-                  "&::after": {
+                  '&::after': {
                     ...tabLabelUnderlineSx,
-                    backgroundColor: active ? colors.accent : "transparent",
-                    transform: active ? "scaleX(1)" : "scaleX(0)",
+                    backgroundColor: active ? colors.accent : 'transparent',
+                    transform: active ? 'scaleX(1)' : 'scaleX(0)',
                   },
                 }}
               >
                 {tab.label}
               </Box>
             </ButtonBase>
-          );
+          )
         })}
       </Paper>
-    </Box>
-  );
-};
+    </StickyTopBar>
+  )
+}
 
-const rootSx = {
-  position: "sticky",
-  top: 0,
-  zIndex: 10,
-  backgroundColor: colors.pageBg,
-  pt: 1,
-} as const;
+const tabsPaperSx: SystemStyleObject<Theme> = {
+  display: 'flex',
+  borderRadius: 0,
+  borderBottom: `1px solid ${colors.border}`,
+  backgroundColor: 'transparent',
+  overflow: 'hidden',
+}
 
-const tabsPaperSx = {
-  display: "flex",
-  borderRadius: "16px 16px 0 0",
-  border: `1px solid ${colors.border}`,
-  backgroundColor: colors.surface,
-  overflow: "hidden",
-} as const;
-
-const tabButtonSx = {
-  width: "50%",
+const tabButtonSx: SystemStyleObject<Theme> = {
+  width: '50%',
   height: 56,
   fontSize: 16,
   transition: transitions.backgroundAndColor,
-  "&:hover": {
+  '&:hover': {
     backgroundColor: colors.inputBg,
   },
-} as const;
+}
 
-const tabLabelSx = {
-  position: "relative",
-  display: "inline-flex",
-  alignItems: "center",
-  height: "100%",
-} as const;
+const tabLabelSx: SystemStyleObject<Theme> = {
+  position: 'relative',
+  display: 'inline-flex',
+  alignItems: 'center',
+  height: '100%',
+}
 
-const tabLabelUnderlineSx = {
+const tabLabelUnderlineSx: SystemStyleObject<Theme> = {
   content: '""',
-  position: "absolute",
+  position: 'absolute',
   left: 0,
   right: 0,
   bottom: 0,
   height: 3,
   borderRadius: radius.pill,
-  transformOrigin: "center",
-  transition: "transform 180ms ease",
-} as const;
+  transformOrigin: 'center',
+  transition: 'transform 180ms ease',
+}

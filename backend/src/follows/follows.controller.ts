@@ -3,35 +3,50 @@ import {
   Get,
   Post,
   Delete,
-  Body,
   Param,
   ParseIntPipe,
   HttpCode,
   HttpStatus,
+  UseGuards,
 } from '@nestjs/common';
 import { FollowsService } from './follows.service';
-import { FollowDto } from './dto/follow-action.dto';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import {
+  CurrentUser,
+  type CurrentUserPayload,
+} from '../auth/current-user.decorator';
 
 @Controller('users')
 export class FollowsController {
   constructor(private readonly followsService: FollowsService) {}
 
-  @Post(':userId/follow')
-  @HttpCode(HttpStatus.CREATED)
+  @Post(':targetId/follow')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
   followUser(
-    @Param('userId', ParseIntPipe) userId: number,
-    @Body() followDto: FollowDto,
+    @Param('targetId', ParseIntPipe) targetId: number,
+    @CurrentUser() user: CurrentUserPayload,
   ) {
-    return this.followsService.followUser(userId, followDto);
+    return this.followsService.followUser(user.userId, targetId);
   }
 
-  @Delete(':userId/follow')
-  @HttpCode(HttpStatus.NO_CONTENT)
+  @Delete(':targetId/follow')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
   unfollowUser(
-    @Param('userId', ParseIntPipe) userId: number,
-    @Body('unfollowingId', ParseIntPipe) unfollowingId: number,
+    @Param('targetId', ParseIntPipe) targetId: number,
+    @CurrentUser() user: CurrentUserPayload,
   ) {
-    return this.followsService.unfollowUser(userId, unfollowingId);
+    return this.followsService.unfollowUser(user.userId, targetId);
+  }
+
+  @Get(':targetId/follow-status')
+  @UseGuards(JwtAuthGuard)
+  getFollowStatus(
+    @Param('targetId', ParseIntPipe) targetId: number,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.followsService.getFollowStatus(user.userId, targetId);
   }
 
   @Get(':userId/following')

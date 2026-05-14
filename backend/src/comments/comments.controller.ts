@@ -8,31 +8,56 @@ import {
   ParseIntPipe,
   HttpCode,
   HttpStatus,
+  Query,
+  UseGuards,
 } from '@nestjs/common';
 import { CommentsService } from './comments.service';
 import { CreateCommentDto } from './dto/create-comment.dto';
+import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
+import {
+  CurrentUser,
+  type CurrentUserPayload,
+} from 'src/auth/current-user.decorator';
+import { PaginationQueryDto } from '../shared/dto/pagination.dto';
 
 @Controller()
 export class CommentsController {
   constructor(private readonly commentsService: CommentsService) {}
 
   @Get('posts/:postId/comments')
-  getPostComments(@Param('postId', ParseIntPipe) postId: number) {
-    return this.commentsService.getPostComments(postId);
+  getPostComments(
+    @Param('postId', ParseIntPipe) postId: number,
+    @Query() pagination: PaginationQueryDto,
+  ) {
+    return this.commentsService.getPostComments(
+      postId,
+      pagination.cursor,
+      pagination.limit,
+    );
   }
 
   @Post('posts/:postId/comments')
+  @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.CREATED)
   createComment(
     @Param('postId', ParseIntPipe) postId: number,
-    @Body() createCommentDto: CreateCommentDto,
+    @CurrentUser() user: CurrentUserPayload,
+    @Body() dto: CreateCommentDto,
   ) {
-    return this.commentsService.createComment(postId, createCommentDto);
+    return this.commentsService.createComment(postId, user.userId, dto);
   }
 
   @Delete('comments/:commentId')
+  @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
-  deleteComment(@Param('commentId', ParseIntPipe) commentId: number) {
-    return this.commentsService.deleteComment(commentId);
+  deleteComment(
+    @Param('commentId', ParseIntPipe) commentId: number,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.commentsService.deleteComment(
+      commentId,
+      user.userId,
+      user.role,
+    );
   }
 }

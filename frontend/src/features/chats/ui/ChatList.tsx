@@ -1,132 +1,121 @@
-﻿import { Box, ButtonBase } from "@mui/material";
-import { useState } from "react";
-import SocialIcon from "@shared/assets/icons/icon-social.svg?react";
-import { Title, SearchInput } from "@shared/ui";
-import type { Chat } from "../model/Chat";
+import { Box } from '@mui/material'
+import type { Theme } from '@mui/material'
+import type { SystemStyleObject } from '@mui/system'
+import { useEffect, useRef } from 'react'
+import { Title, SearchInput } from '@shared/ui'
+import { ChatItem, type Chat } from '@entities/chat'
+import { breakpoints, colors, radius } from '@shared/styles'
 
 type ChatListProps = {
-  chats: Chat[];
-  selectedChatId: number;
-  onSelectChat: (chatId: number) => void;
-};
+  chats: Chat[]
+  selectedChatId: number | null
+  isDraftActive: boolean
+  isLoading: boolean
+  hasNextPage?: boolean
+  isFetchingNextPage?: boolean
+  onLoadMore?: () => void
+  onSelectChat: (chatId: number) => void
+  searchQuery: string
+  onSearchChange: (value: string) => void
+}
 
 export const ChatList = ({
   chats,
   selectedChatId,
+  isDraftActive,
+  isLoading,
+  hasNextPage = false,
+  isFetchingNextPage = false,
+  onLoadMore,
   onSelectChat,
+  searchQuery,
+  onSearchChange,
 }: ChatListProps) => {
-  const hasSelectedChat = selectedChatId > 0;
-  const [query, setQuery] = useState("");
+  const hasSelection = selectedChatId !== null || isDraftActive
+  const sentinelRef = useRef<HTMLDivElement | null>(null)
+  const hasSearch = searchQuery.trim().length > 0
 
-  const handleSearch = () => {
-    // Здесь будет поиск по списку чатов
-  };
+  useEffect(() => {
+    const el = sentinelRef.current
+    if (!el || !onLoadMore || !hasNextPage) return
+
+    const obs = new IntersectionObserver(
+      entries => {
+        if (entries[0].isIntersecting && !isFetchingNextPage) {
+          onLoadMore()
+        }
+      },
+      { rootMargin: '200px 0px' },
+    )
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [onLoadMore, hasNextPage, isFetchingNextPage])
 
   return (
-    <Box
-      sx={{
-        width: 330,
-        flexShrink: 0,
-        borderTop: "1px solid #e2e8f0",
-        borderBottom: "1px solid #e2e8f0",
-        "@media (max-width: 1100px)": {
-          display: hasSelectedChat ? "none" : "block",
-          width: "100%",
-          borderRadius: 0,
-        },
-        "@media (max-width: 800px)": {
-          border: 0,
-        },
-      }}
-    >
-      <Box
-        sx={{
-          display: "flex",
-          flexDirection: "column",
-          gap: 2,
-          p: 2,
-          borderBottom: "1px solid #e2e8f0",
-        }}
-      >
+    <Box sx={rootSx(hasSelection)}>
+      <Box sx={headerSx}>
         <Title text="Чаты" fontSize={22} />
         <SearchInput
-          value={query}
-          onChange={setQuery}
-          onSearch={handleSearch}
+          value={searchQuery}
+          onChange={onSearchChange}
           placeholder="Поиск по чатам..."
           px={1.75}
-          py={1.25}
+          py={1}
         />
       </Box>
 
-      {chats.length > 0 ? (
-        chats.map((chat) => {
-          const active = selectedChatId === chat.id;
-
-          return (
-            <ButtonBase
+      {isLoading ? (
+        <Box sx={emptyHintSx}>Загрузка...</Box>
+      ) : chats.length > 0 ? (
+        <>
+          {chats.map(chat => (
+            <ChatItem
               key={chat.id}
+              isActive={selectedChatId === chat.id}
               onClick={() => onSelectChat(chat.id)}
-              sx={{
-                width: "100%",
-                textAlign: "left",
-                justifyContent: "left",
-                backgroundColor: active ? "#edf4ff" : "#ffffff",
-                transition: "background-color 220ms ease",
-                color: active ? "#5f8df0" : "#334765",
-                "&:hover": {
-                  backgroundColor: "#f6f8fc",
-                },
-              }}
-            >
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 2,
-                  p: 2,
-                  width: "100%",
-                  color: "#0f172a",
-                }}
-              >
-                <Box sx={{ flexShrink: 0 }}>
-                  <SocialIcon width={48} height={48} />
-                </Box>
-
-                <Box
-                  sx={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 0.5,
-                    minWidth: 0,
-                  }}
-                >
-                  <Box sx={{ fontSize: 16, fontWeight: 500, lineHeight: 1.2 }}>
-                    {chat.userName}
-                  </Box>
-
-                  <Box sx={{ fontSize: 16, lineHeight: 1.5, color: "#334765" }}>
-                    Последнее сообщение..
-                  </Box>
-                </Box>
-              </Box>
-            </ButtonBase>
-          );
-        })
+              chat={chat}
+            />
+          ))}
+          {hasNextPage && <Box ref={sentinelRef} sx={{ height: 1 }} />}
+        </>
       ) : (
-        <Box
-          sx={{
-            width: "100%",
-            display: "flex",
-            justifyContent: "center",
-            mt: 10,
-            color: "#334765",
-            fontSize: 18,
-          }}
-        >
-          Нет чатов
-        </Box>
+        <Box sx={emptyHintSx}>{hasSearch ? 'Ничего не найдено' : 'Нет чатов'}</Box>
       )}
     </Box>
-  );
-};
+  )
+}
+
+const rootSx = (hasSelection: boolean) =>
+  ({
+    width: 330,
+    flexShrink: 0,
+    borderTop: `1px solid ${colors.border}`,
+    borderBottom: `1px solid ${colors.border}`,
+    overflowY: 'auto',
+    [breakpoints.tablet]: {
+      display: hasSelection ? 'none' : 'block',
+      width: '100%',
+      borderRadius: radius.lg,
+      border: `1px solid ${colors.border}`,
+    },
+    [breakpoints.mobile]: {
+      border: 0,
+    },
+  }) as const
+
+const headerSx: SystemStyleObject<Theme> = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 2,
+  p: 2,
+  borderBottom: `1px solid ${colors.border}`,
+}
+
+const emptyHintSx: SystemStyleObject<Theme> = {
+  width: '100%',
+  display: 'flex',
+  justifyContent: 'center',
+  mt: 10,
+  color: colors.textSoft,
+  fontSize: 18,
+}

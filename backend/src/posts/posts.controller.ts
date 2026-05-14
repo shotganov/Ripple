@@ -8,62 +8,99 @@ import {
   ParseIntPipe,
   HttpCode,
   HttpStatus,
+  Query,
+  UseGuards,
+  UseInterceptors,
+  UploadedFiles,
 } from '@nestjs/common';
 import { PostsService } from './posts.service';
 import { CreatePostDto } from './dto/create-post.dto';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import {
+  CurrentUser,
+  type CurrentUserPayload,
+} from '../auth/current-user.decorator';
+import { FilesInterceptor } from '@nestjs/platform-express';
+import { multerConfig } from './multer.config';
+import { PaginationQueryDto } from '../shared/dto/pagination.dto';
 
-@Controller()
+@Controller('posts')
 export class PostsController {
   constructor(private readonly postsService: PostsService) {}
 
-  @Get('/posts')
-  getAllPosts() {
-    return this.postsService.getAllPosts();
-  }
-
-  @Get('users/:userId/posts')
-  getUserPosts(@Param('userId', ParseIntPipe) userId: number) {
-    return this.postsService.getUserPosts(userId);
-  }
-
-  @Post('users/:userId/posts')
-  createPost(
-    @Param('userId', ParseIntPipe) userId: number,
-    @Body() createPostDto: CreatePostDto,
+  @Get('feed')
+  @UseGuards(JwtAuthGuard)
+  getFeed(
+    @CurrentUser() user: CurrentUserPayload,
+    @Query() pagination: PaginationQueryDto,
   ) {
-    return this.postsService.createPost(userId, createPostDto);
+    return this.postsService.getFeed(
+      user.userId,
+      pagination.cursor,
+      pagination.limit,
+    );
   }
 
-  @Get('posts/:postId')
-  getPostData(@Param('postId', ParseIntPipe) postId: number) {
-    return this.postsService.getPost(postId);
+  @Get()
+  @UseGuards(JwtAuthGuard)
+  getAllPosts(
+    @CurrentUser() user: CurrentUserPayload,
+    @Query() pagination: PaginationQueryDto,
+  ) {
+    return this.postsService.getAllPosts(
+      user.userId,
+      pagination.cursor,
+      pagination.limit,
+    );
   }
 
-  @Delete('posts/:postId')
+  @Get(':postId')
+  @UseGuards(JwtAuthGuard)
+  getPost(
+    @Param('postId', ParseIntPipe) postId: number,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.postsService.getPost(postId, user.userId);
+  }
+
+  @Post()
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(FilesInterceptor('images', 4, multerConfig))
+  createPost(
+    @CurrentUser() user: CurrentUserPayload,
+    @Body() dto: CreatePostDto,
+    @UploadedFiles() files: Express.Multer.File[],
+  ) {
+    return this.postsService.createPost(user.userId, dto, files);
+  }
+
+  @Delete(':postId')
+  @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
-  deletePost(@Param('postId', ParseIntPipe) postId: number) {
-    return this.postsService.deletePost(postId);
+  async deletePost(
+    @Param('postId', ParseIntPipe) postId: number,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    await this.postsService.deletePost(postId, user.userId, user.role);
   }
 
-  @Post('posts/:postId/likes')
-  @HttpCode(HttpStatus.CREATED)
+  @Post(':postId/likes')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
   likePost(
     @Param('postId', ParseIntPipe) postId: number,
-    @Body('userId', ParseIntPipe) userId: number,
+    @CurrentUser() user: CurrentUserPayload,
   ) {
-    return this.postsService.likePost(postId, userId);
+    return this.postsService.likePost(postId, user.userId);
   }
 
-  @Delete('posts/:postId/likes')
+  @Delete(':postId/likes')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.NO_CONTENT)
   unlikePost(
     @Param('postId', ParseIntPipe) postId: number,
-    @Body('userId', ParseIntPipe) userId: number,
+    @CurrentUser() user: CurrentUserPayload,
   ) {
-    return this.postsService.unlikePost(postId, userId);
-  }
-
-  @Get('feed/:userId')
-  getFeed(@Param('userId', ParseIntPipe) userId: number) {
-    return this.postsService.getFeed(userId);
+    return this.postsService.unlikePost(postId, user.userId);
   }
 }

@@ -1,27 +1,38 @@
-import { useState } from "react";
-import { Box } from "@mui/material";
-import { mockPosts } from "@entities/post";
-import { CreatePost } from "@features/posts";
-import { PostsList } from "@widgets/posts";
-import { FeedHeader, type FeedMode } from "@widgets/feed";
+import { useState } from 'react'
+import { Box } from '@mui/material'
+import { CreatePost, useAllPosts, useFeedPosts } from '@features/posts'
+import { PostsList } from '@widgets/posts'
+import { FeedHeader, type FeedMode } from '@widgets/feed'
+import { PostSkeletonList } from '@entities/post'
 
 const feedTabs = [
-  { label: "Обзор", value: "forYou" as const },
-  { label: "Подписки", value: "following" as const },
-];
+  { label: 'Обзор', value: 'forYou' as const },
+  { label: 'Подписки', value: 'following' as const },
+]
 
 export const FeedPage = () => {
-  const [feedMode, setFeedMode] = useState<FeedMode>("forYou");
+  const [feedMode, setFeedMode] = useState<FeedMode>('forYou')
+  const allPosts = useAllPosts()
+  const feedPosts = useFeedPosts()
+  const active = feedMode === 'forYou' ? allPosts : feedPosts
+
+  const posts = active.data?.pages.flatMap(page => page.items) ?? []
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", pb: 1 }}>
-      <FeedHeader
-        tabs={feedTabs}
-        activeMode={feedMode}
-        onModeChange={setFeedMode}
-      />
+    <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+      <FeedHeader tabs={feedTabs} activeMode={feedMode} onModeChange={setFeedMode} />
       <CreatePost />
-      <PostsList posts={feedMode === "forYou" ? mockPosts : [mockPosts[0]]} />
+      {active.isLoading && <PostSkeletonList />}
+      {active.data && (
+        <PostsList
+          posts={posts}
+          hasNextPage={active.hasNextPage}
+          isFetchingNextPage={active.isFetchingNextPage}
+          onLoadMore={() => active.fetchNextPage()}
+        />
+      )}
+      {active.isFetchingNextPage && <PostSkeletonList count={2} />}
+      <Box sx={{ flex: 1, minHeight: '50vh' }} />
     </Box>
-  );
-};
+  )
+}

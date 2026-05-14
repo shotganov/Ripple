@@ -1,10 +1,7 @@
-export { PrivateRouter } from "./ui/PrivateRouter";
-export { useLogin, useRegister } from "./hooks/useAuth";
-export {
-  default as authReducer,
-  authSlice,
-  setToken,
-  clearToken,
-} from "./model/authSlice";
-export { selectToken } from "./model/selectors";
-export type { Auth } from "./model/Auth";
+export { PrivateRouter } from './ui/PrivateRouter'
+export { AdminRoute } from './ui/AdminRoute'
+export { AuthForm, type AuthMode } from './ui/AuthForm'
+export { useLogin, useRegister } from './hooks/useAuth'
+export { default as authReducer, authSlice, setToken, clearToken } from './model/authSlice'
+export { selectToken } from './model/selectors'
+export type { Auth } from './model/Auth'

@@ -1,1 +1,1 @@
-export { loginRequest, registerRequest } from "./authApi";
+export { loginRequest, registerRequest } from './authApi'

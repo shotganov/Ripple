@@ -1,194 +1,161 @@
 import {
   Injectable,
-  ConflictException,
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import * as bcrypt from 'bcrypt';
 import * as fs from 'fs/promises';
 import { join } from 'path';
+import { Prisma, Role } from '@prisma/client';
+import { avatarUrl, coverUrl } from '../shared/paths';
+
+const publicUserSelect = {
+  id: true,
+  username: true,
+  tag: true,
+  avatar: true,
+  coverImage: true,
+  bio: true,
+} as const;
+
+type PublicUser = {
+  id: number;
+  username: string;
+  tag: string;
+  avatar: string | null;
+  coverImage: string | null;
+  bio: string | null;
+};
+
+const formatPublicUser = (user: PublicUser) => ({
+  ...user,
+  avatar: avatarUrl(user.avatar),
+  coverImage: coverUrl(user.coverImage),
+});
+
+const USERNAME_MIN = 3;
+const USERNAME_MAX = 50;
+const BIO_MAX = 160;
 
 @Injectable()
 export class UsersService {
   constructor(private prisma: PrismaService) {}
 
-  async create(data: CreateUserDto) {
-    if (!data.username || data.username.trim() === '') {
-      throw new BadRequestException('Username is required');
-    }
-
-    if (!data.password || data.password.trim() === '') {
-      throw new BadRequestException('Password is required');
-    }
-
-    if (data.password.length < 6) {
-      throw new BadRequestException(
-        'Password must be at least 6 characters long',
-      );
-    }
-
-    if (data.password.length > 50) {
-      throw new BadRequestException('Password must not exceed 50 characters');
-    }
-
-    const username = data.username.trim();
-
-    if (username.length < 3) {
-      throw new BadRequestException(
-        'Username must be at least 3 characters long',
-      );
-    }
-
-    if (username.length > 50) {
-      throw new BadRequestException('Username must not exceed 50 characters');
-    }
-
-    const existing = await this.prisma.user.findUnique({
-      where: { username: username },
-    });
-
-    if (existing) {
-      throw new ConflictException('Username already exists');
-    }
-
-    const salt = await bcrypt.genSalt();
-    const passwordHash = await bcrypt.hash(data.password, salt);
-
-    const user = await this.prisma.user.create({
-      data: {
-        username: username,
-        role: 'user',
-        passwordHash,
-        avatar: data.avatar?.trim(),
-        bio: data.bio?.trim(),
-      },
-      select: {
-        id: true,
-        username: true,
-        avatar: true,
-        bio: true,
-      },
-    });
-
-    return {
-      user: user,
-    };
-  }
-
   async findAll() {
     const users = await this.prisma.user.findMany({
-      select: {
-        id: true,
-        username: true,
-        avatar: true,
-        bio: true,
-      },
+      select: publicUserSelect,
     });
-    return users;
+    return users.map(formatPublicUser);
+  }
+
+  async getSuggestions(currentUserId: number, limit = 5) {
+    const following = await this.prisma.follow.findMany({
+      where: { followerId: currentUserId },
+      select: { followingId: true },
+    });
+    const excludeIds = [currentUserId, ...following.map((f) => f.followingId)];
+
+    const candidates = await this.prisma.user.findMany({
+      where: { id: { notIn: excludeIds }, role: Role.USER },
+      select: publicUserSelect,
+    });
+
+    for (let i = candidates.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+    }
+
+    return candidates.slice(0, limit).map(formatPublicUser);
   }
 
   async findOne(id: number) {
-    const user = await this.prisma.user.findUnique({
-      where: { id },
-      select: {
-        id: true,
-        username: true,
-        avatar: true,
-        bio: true,
-      },
-    });
+    const [user, followersCount, followingCount] = await Promise.all([
+      this.prisma.user.findUnique({
+        where: { id },
+        select: publicUserSelect,
+      }),
+      this.prisma.follow.count({ where: { followingId: id } }), // кто подписан на этого юзера
+      this.prisma.follow.count({ where: { followerId: id } }), // на кого подписан этот юзер
+    ]);
 
     if (!user) {
       throw new NotFoundException('User not found');
     }
 
-    const follows = await this.prisma.follow.findMany({
-      where: { followerId: id },
-      select: {
-        followingId: true,
-      },
-    });
-
-    const followingIds = follows.map((follow) => follow.followingId.toString());
-
     return {
-      ...user,
-      id: user.id.toString(),
-      following: followingIds,
+      ...formatPublicUser(user),
+      followersCount,
+      followingCount,
     };
   }
 
-  async update(id: number, data: UpdateUserDto) {
-    const user = await this.prisma.user.findUnique({ where: { id } });
+  async updateProfile(
+    userId: number,
+    dto: UpdateUserDto,
+    files: {
+      avatar?: Express.Multer.File;
+      coverImage?: Express.Multer.File;
+    },
+  ) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) {
       throw new NotFoundException('User not found');
     }
 
-    const updateData: any = {};
+    const data: Prisma.UserUpdateInput = {};
 
-    if (data.username !== undefined) {
-      const username = data.username.trim();
-
-      if (username === '') {
-        throw new BadRequestException('Username cannot be empty');
-      }
-
-      if (username.length < 3) {
+    if (dto.username !== undefined) {
+      const username = dto.username.trim();
+      if (username.length < USERNAME_MIN || username.length > USERNAME_MAX) {
         throw new BadRequestException(
-          'Username must be at least 3 characters long',
+          `Username must be ${USERNAME_MIN}..${USERNAME_MAX} characters`,
         );
       }
-
-      if (username.length > 50) {
-        throw new BadRequestException('Username must not exceed 50 characters');
-      }
-
-      if (username !== user.username) {
-        const existing = await this.prisma.user.findUnique({
-          where: { username: username },
-        });
-        if (existing) {
-          throw new ConflictException('Username already taken');
-        }
-      }
-
-      updateData.username = username;
+      data.username = username;
     }
 
-    if (data.avatar !== undefined) {
-      updateData.avatar = data.avatar.trim() || null;
+    if (dto.bio !== undefined) {
+      const bio = dto.bio.trim();
+      if (bio.length > BIO_MAX) {
+        throw new BadRequestException(
+          `Bio must not exceed ${BIO_MAX} characters`,
+        );
+      }
+      data.bio = bio || null;
     }
 
-    if (data.bio !== undefined) {
-      updateData.bio = data.bio.trim() || null;
+    let oldAvatarToDelete: string | null = null;
+    if (files.avatar) {
+      data.avatar = files.avatar.filename;
+      oldAvatarToDelete = user.avatar;
+    }
+
+    let oldCoverToDelete: string | null = null;
+    if (files.coverImage) {
+      data.coverImage = files.coverImage.filename;
+      oldCoverToDelete = user.coverImage;
     }
 
     const updated = await this.prisma.user.update({
-      where: { id },
-      data: updateData,
-      select: {
-        id: true,
-        username: true,
-        avatar: true,
-        bio: true,
-      },
+      where: { id: userId },
+      data,
+      select: publicUserSelect,
     });
 
-    const follows = await this.prisma.follow.findMany({
-      where: { followerId: id },
-      select: {
-        followingId: true,
-      },
-    });
-
-    const followingIds = follows.map((follow) => follow.followingId.toString());
+    if (oldAvatarToDelete) {
+      void fs
+        .unlink(join(process.cwd(), 'public', 'avatars', oldAvatarToDelete))
+        .catch(() => undefined);
+    }
+    if (oldCoverToDelete) {
+      void fs
+        .unlink(join(process.cwd(), 'public', 'covers', oldCoverToDelete))
+        .catch(() => undefined);
+    }
 
     return {
-      ...updated,
-      following: followingIds,
+      ...formatPublicUser(updated),
     };
   }
 
@@ -198,46 +165,41 @@ export class UsersService {
       throw new NotFoundException('User not found');
     }
 
-    await this.prisma.user.delete({ where: { id } });
-    return { message: 'User deleted' };
-  }
-
-  async updateAvatar(id: number, avatarFilename: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { id },
+    const postImages = await this.prisma.post.findMany({
+      where: { userId: id },
+      select: { images: true },
     });
 
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
+    await this.prisma.user.delete({ where: { id } });
+
+    const cleanups: Promise<unknown>[] = [];
 
     if (user.avatar) {
-      try {
-        const oldAvatarPath = join(
-          process.cwd(),
-          'dist',
-          'public',
-          user.avatar,
+      cleanups.push(
+        fs
+          .unlink(join(process.cwd(), 'public', 'avatars', user.avatar))
+          .catch(() => undefined),
+      );
+    }
+    if (user.coverImage) {
+      cleanups.push(
+        fs
+          .unlink(join(process.cwd(), 'public', 'covers', user.coverImage))
+          .catch(() => undefined),
+      );
+    }
+    for (const post of postImages) {
+      for (const name of post.images) {
+        cleanups.push(
+          fs
+            .unlink(join(process.cwd(), 'public', 'posts', name))
+            .catch(() => undefined),
         );
-        await fs.unlink(oldAvatarPath);
-      } catch (error) {
-        console.warn(error);
       }
     }
 
-    const updatedUser = await this.prisma.user.update({
-      where: { id },
-      data: {
-        avatar: avatarFilename,
-      },
-      select: {
-        id: true,
-        username: true,
-        avatar: true,
-        bio: true,
-      },
-    });
+    await Promise.all(cleanups);
 
-    return updatedUser;
+    return { message: 'User deleted' };
   }
 }

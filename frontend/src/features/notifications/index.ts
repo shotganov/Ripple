@@ -1,2 +1,5 @@
-export { Notification } from "./ui/Notification";
-export type { NotificationType } from "./model/Notification";
+export {
+  useNotifications,
+  useUnreadCount,
+  useMarkAllNotificationsRead,
+} from './hooks/useNotifications'

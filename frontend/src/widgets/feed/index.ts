@@ -1,2 +1,2 @@
-export { FeedHeader } from "./ui/FeedHeader";
-export type { FeedMode } from "./model/FeedMode";
+export { FeedHeader } from './ui/FeedHeader'
+export type { FeedMode } from './model/FeedMode'

@@ -1,7 +1,7 @@
-@import url("./shared/styles/reset.css");
-@import "@fontsource/roboto/400.css";
-@import "@fontsource/roboto/500.css";
-@import "@fontsource/roboto/700.css";
+@import url('./shared/styles/reset.css');
+@import '@fontsource/roboto/400.css';
+@import '@fontsource/roboto/500.css';
+@import '@fontsource/roboto/700.css';
 
 body {
   font-family: 'Roboto', sans-serif;
@@ -9,21 +9,10 @@ body {
 
 html {
   scrollbar-gutter: stable;
+  background-color: #ffffff;
 }
 
-html.modal-open {
+html.lock-dim {
   background-color: rgba(15, 23, 42, 0.8);
-  scrollbar-gutter: auto;
 }
 
-/* 
-@media (max-width: 800px) {
-  * {
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-  }
-
-  *::-webkit-scrollbar {
-    display: none;
-  }
-} */

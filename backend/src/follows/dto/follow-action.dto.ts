@@ -1,3 +1,9 @@
+import { Type } from 'class-transformer';
+import { IsInt, IsPositive } from 'class-validator';
+
 export class FollowDto {
-  followingId: number; // кто подписывается
+  @Type(() => Number)
+  @IsInt()
+  @IsPositive()
+  followingId: number;
 }

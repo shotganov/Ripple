@@ -1,66 +1,57 @@
-import { useCallback, useEffect } from "react";
-import { Box, IconButton } from "@mui/material";
-import XIcon from "@shared/assets/icons/icon-x.svg?react";
-import ChevronLeftIcon from "@shared/assets/icons/icon-chevron-left.svg?react";
-import { Modal } from "./modal";
-import { alphaColors, colors, transitions } from "../styles/tokens";
+import { useCallback, useEffect } from 'react'
+import { Box, IconButton } from '@mui/material'
+import XIcon from '@shared/assets/icons/icon-x.svg?react'
+import ChevronLeftIcon from '@shared/assets/icons/icon-chevron-left.svg?react'
+import { Modal } from './modal'
+import { alphaColors, colors, transitions } from '../styles/tokens'
 
 type ImagePreviewModalProps = {
-  images: string[];
-  index: number;
-  setIndex: React.Dispatch<React.SetStateAction<number | null>>;
-  onClose: () => void;
-};
+  images: string[]
+  index: number
+  setIndex: React.Dispatch<React.SetStateAction<number | null>>
+  onClose: () => void
+}
 
-export const ImagePreviewModal = ({
-  images,
-  index,
-  setIndex,
-  onClose,
-}: ImagePreviewModalProps) => {
-  const isFirstImage = index === 0;
-  const isLastImage = index === images.length - 1;
+export const ImagePreviewModal = ({ images, index, setIndex, onClose }: ImagePreviewModalProps) => {
+  const isFirstImage = index === 0
+  const isLastImage = index === images.length - 1
 
   const showPrev = useCallback(() => {
-    setIndex((currentIndex) => {
-      if (currentIndex === null) return 0;
-      return Math.max(currentIndex - 1, 0);
-    });
-  }, [setIndex]);
+    setIndex(currentIndex => {
+      if (currentIndex === null) return 0
+      return Math.max(currentIndex - 1, 0)
+    })
+  }, [setIndex])
 
   const showNext = useCallback(() => {
-    setIndex((currentIndex) => {
-      if (currentIndex === null) return 0;
-      return Math.min(currentIndex + 1, images.length - 1);
-    });
-  }, [images.length, setIndex]);
+    setIndex(currentIndex => {
+      if (currentIndex === null) return 0
+      return Math.min(currentIndex + 1, images.length - 1)
+    })
+  }, [images.length, setIndex])
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        onClose();
+      if (event.key === 'ArrowLeft' && !isFirstImage) {
+        showPrev()
       }
 
-      if (event.key === "ArrowLeft" && !isFirstImage) {
-        showPrev();
+      if (event.key === 'ArrowRight' && !isLastImage) {
+        showNext()
       }
+    }
 
-      if (event.key === "ArrowRight" && !isLastImage) {
-        showNext();
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener('keydown', handleKeyDown)
 
     return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [isFirstImage, isLastImage, onClose, showNext, showPrev]);
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [isFirstImage, isLastImage, onClose, showNext, showPrev])
 
   return (
     <Modal
-      zIndex={20}
       onClose={onClose}
+      lockVariant="fullscreen"
       sx={{
         backgroundColor: colors.black,
       }}
@@ -69,10 +60,10 @@ export const ImagePreviewModal = ({
         onClick={onClose}
         sx={{
           ...previewButtonSx,
-          position: "absolute",
+          position: 'absolute',
           right: 18,
-          top: "5%",
-          transform: "translateY(-50%)",
+          top: '5%',
+          transform: 'translateY(-50%)',
         }}
       >
         <XIcon width={22} height={22} />
@@ -83,10 +74,10 @@ export const ImagePreviewModal = ({
           onClick={showPrev}
           sx={{
             ...previewButtonSx,
-            position: "absolute",
+            position: 'absolute',
             left: 18,
-            top: "50%",
-            transform: "translateY(-50%)",
+            top: '50%',
+            transform: 'translateY(-50%)',
           }}
         >
           <ChevronLeftIcon width={20} height={20} />
@@ -96,12 +87,12 @@ export const ImagePreviewModal = ({
       <Box
         onMouseDown={onClose}
         sx={{
-          width: "100vw",
-          height: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          cursor: "pointer",
+          width: '100vw',
+          height: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
         }}
       >
         <Box
@@ -109,13 +100,13 @@ export const ImagePreviewModal = ({
           src={images[index]}
           alt=""
           sx={{
-            width: "100vw",
-            height: "100vh",
-            maxWidth: "100%",
-            maxHeight: "100%",
-            objectFit: "contain",
-            display: "block",
-            cursor: "pointer",
+            width: '100vw',
+            height: '100vh',
+            maxWidth: '100%',
+            maxHeight: '100%',
+            objectFit: 'contain',
+            display: 'block',
+            cursor: 'pointer',
           }}
         />
       </Box>
@@ -125,31 +116,27 @@ export const ImagePreviewModal = ({
           onClick={showNext}
           sx={{
             ...previewButtonSx,
-            position: "absolute",
+            position: 'absolute',
             right: 18,
-            top: "50%",
-            transform: "translateY(-50%)",
+            top: '50%',
+            transform: 'translateY(-50%)',
           }}
         >
-          <ChevronLeftIcon
-            width={20}
-            height={20}
-            style={{ transform: "rotate(180deg)" }}
-          />
+          <ChevronLeftIcon width={20} height={20} style={{ transform: 'rotate(180deg)' }} />
         </IconButton>
       )}
     </Modal>
-  );
-};
+  )
+}
 
 const previewButtonSx = {
   width: 44,
   height: 44,
   zIndex: 1,
-  color: "#ffffff",
+  color: '#ffffff',
   backgroundColor: alphaColors.imagePreviewButtonBg,
   transition: transitions.background,
-  "&:hover": {
+  '&:hover': {
     backgroundColor: alphaColors.imagePreviewButtonHoverBg,
   },
-};
+}

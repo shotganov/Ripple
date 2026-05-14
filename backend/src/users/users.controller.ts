@@ -1,35 +1,44 @@
 import {
   Controller,
   Get,
-  Post,
   Body,
   Patch,
   Param,
   Delete,
   ParseIntPipe,
+  Query,
   UseInterceptors,
-  UploadedFile,
-  BadRequestException,
+  UploadedFiles,
+  UseGuards,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
-import { extname } from 'path';
+import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { UsersService } from './user.service';
-import { CreateUserDto } from './dto/create-user.dto';
+import { PostsService } from '../posts/posts.service';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import {
+  CurrentUser,
+  type CurrentUserPayload,
+} from '../auth/current-user.decorator';
+import { profileMulterConfig } from './multer.config';
+import { PaginationQueryDto } from '../shared/dto/pagination.dto';
 
 @Controller('users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
-
-  @Post()
-  create(@Body() createUserDto: CreateUserDto) {
-    return this.usersService.create(createUserDto);
-  }
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly postsService: PostsService,
+  ) {}
 
   @Get()
   findAll() {
     return this.usersService.findAll();
+  }
+
+  @Get('suggestions')
+  @UseGuards(JwtAuthGuard)
+  getSuggestions(@CurrentUser() user: CurrentUserPayload) {
+    return this.usersService.getSuggestions(user.userId);
   }
 
   @Get(':id')
@@ -37,60 +46,50 @@ export class UsersController {
     return this.usersService.findOne(id);
   }
 
-  @Patch(':id')
-  update(
+  @Get(':id/posts')
+  @UseGuards(JwtAuthGuard)
+  getUserPosts(
     @Param('id', ParseIntPipe) id: number,
-    @Body() updateUserDto: UpdateUserDto,
+    @CurrentUser() user: CurrentUserPayload,
+    @Query() pagination: PaginationQueryDto,
   ) {
-    return this.usersService.update(id, updateUserDto);
+    return this.postsService.getUserPosts(
+      id,
+      user.userId,
+      pagination.cursor,
+      pagination.limit,
+    );
   }
 
-  @Delete(':id')
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.usersService.remove(id);
-  }
-
-  @Post(':id/avatar')
+  @Patch('me')
+  @UseGuards(JwtAuthGuard)
   @UseInterceptors(
-    FileInterceptor('avatar', {
-      storage: diskStorage({
-        destination: './public/',
-        filename: (req, file, callback) => {
-          const uniqueName = Date.now() + '-' + Math.round(Math.random() * 1e9);
-          const ext = extname(file.originalname);
-          const filename = `avatar_${req.params.id}_${uniqueName}${ext}`;
-          callback(null, filename);
-        },
-      }),
-      fileFilter: (req, file, callback) => {
-        if (!file.mimetype.match(/\/(jpg|jpeg|png|gif)$/)) {
-          return callback(
-            new BadRequestException('Only image files are allowed'),
-            false,
-          );
-        }
-        callback(null, true);
-      },
-      limits: {
-        fileSize: 5 * 1024 * 1024, // 5MB
-      },
-    }),
+    FileFieldsInterceptor(
+      [
+        { name: 'avatar', maxCount: 1 },
+        { name: 'coverImage', maxCount: 1 },
+      ],
+      profileMulterConfig,
+    ),
   )
-  async uploadAvatar(
-    @Param('id', ParseIntPipe) id: number,
-    @UploadedFile() file: any,
+  updateMe(
+    @CurrentUser() user: CurrentUserPayload,
+    @Body() dto: UpdateUserDto,
+    @UploadedFiles()
+    files: {
+      avatar?: Express.Multer.File[];
+      coverImage?: Express.Multer.File[];
+    },
   ) {
-    if (!file) {
-      throw new BadRequestException('No file uploaded');
-    }
+    return this.usersService.updateProfile(user.userId, dto, {
+      avatar: files?.avatar?.[0],
+      coverImage: files?.coverImage?.[0],
+    });
+  }
 
-    const updatedUser = await this.usersService.updateAvatar(id, file.filename);
-
-    return {
-      success: true,
-      message: 'Avatar uploaded successfully',
-      filename: file.filename,
-      user: updatedUser,
-    };
+  @Delete('me')
+  @UseGuards(JwtAuthGuard)
+  removeMe(@CurrentUser() user: CurrentUserPayload) {
+    return this.usersService.remove(user.userId);
   }
 }

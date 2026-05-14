@@ -1,52 +1,55 @@
-import { Box, InputBase, Paper } from "@mui/material";
-import { useState } from "react";
-import SocialIcon from "@shared/assets/icons/icon-social.svg?react";
-import { colors, radius } from "@shared/styles";
-import { CreatePostModal } from "./CreatePostModal";
+import { Box, InputBase, Paper } from '@mui/material'
+import { useState } from 'react'
+import { colors, radius } from '@shared/styles'
+import { CreatePostModal } from './CreatePostModal'
+import { selectUser } from '@entities/user'
+import { useAppSelector } from '@shared/hooks'
+import { Avatar } from '@shared/ui'
+import { resolveAssetUrl } from '@shared/config'
 
 export const CreatePost = () => {
-  const [isCreatePostModalOpen, setIsCreatePostModalOpen] = useState(false);
+  const user = useAppSelector(selectUser)
+  const [isCreatePostModalOpen, setIsCreatePostModalOpen] = useState(false)
+
+  if (!user) return null
 
   return (
     <Box
       sx={{
         background: colors.surface,
-        display: "flex",
-        flexDirection: "column",
-
+        display: 'flex',
+        flexDirection: 'column',
         border: `1px solid ${colors.border}`,
-        borderTop: "0px",
-        p: 2,
-        borderRadius: "0px 0px 16px 16px",
+        borderTop: '0px',
+        py: 2,
+        px: 1.5,
+        borderRadius: 0,
         gap: 1,
       }}
     >
-      <Box sx={{ display: "flex", gap: 2, width: "100%" }}>
-        <Box sx={{ flexShrink: 0 }}>
-          <SocialIcon width={48} height={48} />
-        </Box>
+      <Box sx={{ display: 'flex', gap: 2, width: '100%', alignItems: 'center' }}>
+        <Avatar src={resolveAssetUrl(user.avatar)} size={48} />
 
         <Paper
           elevation={0}
           sx={{
             px: 1.75,
-            py: 1.25,
-            width: "100%",
+            py: 1,
+            width: '100%',
             borderRadius: radius.md,
             border: `1px solid ${colors.inputBorder}`,
             backgroundColor: colors.inputBg,
           }}
         >
           <InputBase
-            placeholder={"Написать пост..."}
+            placeholder={'Написать пост...'}
             onFocus={() => setIsCreatePostModalOpen(true)}
+            sx={{ width: '100%' }}
           />
         </Paper>
       </Box>
 
-      {isCreatePostModalOpen && (
-        <CreatePostModal setIsEdit={setIsCreatePostModalOpen} />
-      )}
+      {isCreatePostModalOpen && <CreatePostModal setIsOpen={setIsCreatePostModalOpen} />}
     </Box>
-  );
-};
+  )
+}

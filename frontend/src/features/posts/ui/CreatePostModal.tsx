@@ -1,86 +1,103 @@
-import {
-  Box,
-  ClickAwayListener,
-  TextareaAutosize,
-  IconButton,
-} from "@mui/material";
-import { useEffect, useRef, useState } from "react";
-import EmojiPicker, { type EmojiClickData } from "emoji-picker-react";
-import { useImmer } from "use-immer";
-import SocialIcon from "@shared/assets/icons/icon-social.svg?react";
-import EmojiIcon from "@shared/assets/icons/icon-emoji-gray.svg?react";
-import IconImg from "@shared/assets/icons/icon-image-gray.svg";
-import XIcon from "@shared/assets/icons/icon-x.svg?react";
-import {
-  CharacterCounter,
-  Modal,
-  ModalActionButton,
-  ModalContent,
-} from "@shared/ui";
-import { alphaColors, colors, radius, transitions } from "@shared/styles";
+import { Box, ClickAwayListener, TextareaAutosize, IconButton } from '@mui/material'
+import { useEffect, useRef, useState } from 'react'
+import EmojiPicker, { type EmojiClickData } from 'emoji-picker-react'
+import { useImmer } from 'use-immer'
+import EmojiIcon from '@shared/assets/icons/icon-emoji-gray.svg?react'
+import IconImg from '@shared/assets/icons/icon-image-gray.svg'
+import XIcon from '@shared/assets/icons/icon-x.svg?react'
+import { Avatar, CharacterCounter, Modal, ModalActionButton, ModalContent } from '@shared/ui'
+import { alphaColors, colors, radius, transitions, zIndex } from '@shared/styles'
+import { useCreatePost } from '../hooks/usePosts'
+import { useAppSelector } from '@shared/hooks'
+import { selectUser } from '@entities/user'
 
 type Props = {
-  setIsEdit: React.Dispatch<React.SetStateAction<boolean>>;
-};
+  setIsOpen: React.Dispatch<React.SetStateAction<boolean>>
+}
 
-export const CreatePostModal = ({ setIsEdit }: Props) => {
-  const imageBlobUrlsRef = useRef<string[]>([]);
-  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
-
-  const [images, setImages] = useImmer<string[]>([]);
-  const [open, setOpen] = useState(false);
-  const [text, setText] = useState("");
+export const CreatePostModal = ({ setIsOpen }: Props) => {
+  const user = useAppSelector(selectUser)
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null)
+  const previewUrlsRef = useRef<string[]>([])
+  const [images, setImages] = useImmer<File[]>([])
+  const [previewUrls, setPreviewUrls] = useImmer<string[]>([])
+  const [open, setOpen] = useState(false)
+  const [text, setText] = useState('')
+  const createPost = useCreatePost()
 
   const handleEmojiClick = (emojiData: EmojiClickData) => {
-    setText((prev) => prev + emojiData.emoji);
-  };
+    setText(prev => prev + emojiData.emoji)
+  }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(e.target.files ?? [])
+    if (files.length === 0) return
 
-    const url = URL.createObjectURL(file);
-    imageBlobUrlsRef.current.push(url);
-    setImages((draft: string[]) => {
-      draft.push(url);
-    });
-  };
+    const remaining = Math.max(0, 4 - images.length)
+    const accepted = files.slice(0, remaining)
+    if (accepted.length === 0) {
+      e.target.value = ''
+      return
+    }
+
+    const urls = accepted.map(file => URL.createObjectURL(file))
+
+    setImages(draft => {
+      accepted.forEach(file => draft.push(file))
+    })
+
+    setPreviewUrls(draft => {
+      urls.forEach(url => draft.push(url))
+    })
+
+    e.target.value = ''
+  }
 
   const handleRemoveImage = (index: number) => {
-    setImages((draft: string[]) => {
-      const removed = draft[index];
-      if (removed) {
-        URL.revokeObjectURL(removed);
-        imageBlobUrlsRef.current = imageBlobUrlsRef.current.filter(
-          (url) => url !== removed,
-        );
-      }
-      draft.splice(index, 1);
-    });
-  };
+    setImages(draft => {
+      draft.splice(index, 1)
+    })
 
-  const handleSendPost = (text: string) => {
-    if (
-      (text.trim().length === 0 && images.length === 0) ||
-      text.trim().length > 300
-    )
-      return;
-  };
+    setPreviewUrls(draft => {
+      const removed = draft[index]
+      if (removed) URL.revokeObjectURL(removed)
+      draft.splice(index, 1)
+    })
+  }
+
+  const handleCreatePost = (text: string) => {
+    const trimmed = text.trim()
+    if (trimmed.length > 300 || createPost.isPending) return
+    if (trimmed.length === 0 && images.length === 0) return
+
+    const formData = new FormData()
+
+    formData.append('content', trimmed)
+
+    images.forEach(file => {
+      formData.append('images', file)
+    })
+
+    createPost.mutate(formData, {
+      onSuccess: () => setIsOpen(false),
+    })
+  }
 
   useEffect(() => {
-    textareaRef.current?.focus();
-    return () => {
-      imageBlobUrlsRef.current.forEach((url: string) => {
-        URL.revokeObjectURL(url);
-      });
-    };
-  }, []);
+    previewUrlsRef.current = previewUrls
+  }, [previewUrls])
+
+  useEffect(() => {
+    textareaRef.current?.focus()
+    return () => previewUrlsRef.current.forEach(URL.revokeObjectURL)
+  }, [])
+
+  if (!user) return null
 
   return (
     <Modal
       placement="top"
-      zIndex={10}
-      onClose={() => setIsEdit(false)}
+      onClose={() => setIsOpen(false)}
       sx={{
         pt: 5.7,
       }}
@@ -90,35 +107,32 @@ export const CreatePostModal = ({ setIsEdit }: Props) => {
         maxWidth="100vw"
         maxHeight="90vh"
         sx={{
-          overflowY: "auto",
-          border: "none",
+          overflowY: 'auto',
+          border: 'none',
           p: 1.5,
           pt: 2,
         }}
       >
         <Box
           sx={{
-            width: "100%",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
+            width: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
             px: 1,
           }}
         >
-          <ModalActionButton
-            variant="secondary"
-            onClick={() => setIsEdit(false)}
-          >
+          <ModalActionButton variant="secondary" onClick={() => setIsOpen(false)}>
             Отменить
           </ModalActionButton>
 
           <ModalActionButton
             variant="primary"
-            onClick={() => {
-              handleSendPost(text);
-              setIsEdit(false);
-            }}
-            disabled={text.trim().length === 0 || text.trim().length > 300}
+            onClick={() => handleCreatePost(text)}
+            disabled={
+              (text.trim().length === 0 && images.length === 0) ||
+              text.trim().length > 300
+            }
           >
             Опубликовать
           </ModalActionButton>
@@ -127,8 +141,8 @@ export const CreatePostModal = ({ setIsEdit }: Props) => {
         <Box
           sx={{
             background: colors.surface,
-            display: "flex",
-            flexDirection: "column",
+            display: 'flex',
+            flexDirection: 'column',
             p: 2,
             paddingBottom: 1,
             borderRadius: radius.lg,
@@ -137,18 +151,18 @@ export const CreatePostModal = ({ setIsEdit }: Props) => {
         >
           <Box
             sx={{
-              display: "flex",
-              flexDirection: "column",
-              position: "relative",
+              display: 'flex',
+              flexDirection: 'column',
+              position: 'relative',
               gap: 2,
-              width: "calc(100% + 54px)",
+              width: 'calc(100% + 54px)',
               mx: -3.5,
               backgroundColor: colors.inputBg,
               borderTop: `1px solid ${colors.inputBorder}`,
               borderBottom: `1px solid ${colors.inputBorder}`,
-              minHeight: "240px",
+              minHeight: '240px',
               transition: transitions.background,
-              "&:focus-within": {
+              '&:focus-within': {
                 backgroundColor: colors.inputFocusBg,
               },
             }}
@@ -156,12 +170,12 @@ export const CreatePostModal = ({ setIsEdit }: Props) => {
             <Box
               sx={{
                 flexShrink: 0,
-                position: "absolute",
+                position: 'absolute',
                 left: 12,
                 top: 10,
               }}
             >
-              <SocialIcon width={48} height={48} />
+              <Avatar src={user.avatar} size={48} />
             </Box>
 
             <TextareaAutosize
@@ -170,19 +184,19 @@ export const CreatePostModal = ({ setIsEdit }: Props) => {
               ref={textareaRef}
               placeholder="Написать пост..."
               style={{
-                width: "100%",
-                boxSizing: "border-box",
-                padding: "12px 16px",
-                paddingLeft: "70px",
-                outline: "none",
-                resize: "none",
+                width: '100%',
+                boxSizing: 'border-box',
+                padding: '12px 16px',
+                paddingLeft: '70px',
+                outline: 'none',
+                resize: 'none',
                 color: colors.text,
-                font: "inherit",
-                fontSize: "17px",
+                font: 'inherit',
+                fontSize: '17px',
                 lineHeight: 1.2,
               }}
               value={text}
-              onChange={(e) => setText(e.target.value)}
+              onChange={e => setText(e.target.value)}
             />
 
             <Box
@@ -190,21 +204,20 @@ export const CreatePostModal = ({ setIsEdit }: Props) => {
                 mt: 1,
                 p: 2,
                 pb: 1,
-                width: "100%",
-                display: "grid",
-                gridAutoFlow: "column",
-                gridAutoColumns:
-                  images.length === 1 ? "minmax(0, 250px)" : "minmax(0, 1fr)",
+                width: '100%',
+                display: 'grid',
+                gridAutoFlow: 'column',
+                gridAutoColumns: images.length === 1 ? 'minmax(0, 250px)' : 'minmax(0, 1fr)',
                 gap: 2,
               }}
             >
-              {images.map((elem: string, index: number) => (
+              {previewUrls.map((elem: string, index: number) => (
                 <Box
                   key={index}
                   sx={{
-                    position: "relative",
-                    width: "100%",
-                    aspectRatio: "1 / 1",
+                    position: 'relative',
+                    width: '100%',
+                    aspectRatio: '1 / 1',
                   }}
                 >
                   <Box
@@ -212,18 +225,18 @@ export const CreatePostModal = ({ setIsEdit }: Props) => {
                     src={elem}
                     alt="preview"
                     sx={{
-                      width: "100%",
-                      height: "100%",
+                      width: '100%',
+                      height: '100%',
                       borderRadius: radius.sm,
-                      objectFit: "cover",
-                      display: "block",
+                      objectFit: 'cover',
+                      display: 'block',
                     }}
                   />
 
                   <IconButton
                     onClick={() => handleRemoveImage(index)}
                     sx={{
-                      position: "absolute",
+                      position: 'absolute',
                       height: 24,
                       width: 24,
                       p: 0,
@@ -232,7 +245,7 @@ export const CreatePostModal = ({ setIsEdit }: Props) => {
                       background: alphaColors.imageRemoveBg,
                       borderRadius: 10,
                       color: colors.surface,
-                      "&:hover": { background: alphaColors.imageRemoveHoverBg },
+                      '&:hover': { background: alphaColors.imageRemoveHoverBg },
                     }}
                   >
                     <XIcon width={18} height={18} />
@@ -244,25 +257,25 @@ export const CreatePostModal = ({ setIsEdit }: Props) => {
 
           <Box
             sx={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
               pt: 1,
-              position: "relative",
+              position: 'relative',
             }}
           >
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <IconButton
                 disableRipple
                 sx={{
                   p: 0,
-                  height: "23px",
-                  width: "23px",
+                  height: '23px',
+                  width: '23px',
                   color: colors.textSoft,
                   borderRadius: 2,
-                  "&:hover": { backgroundColor: colors.inputFocusBg },
+                  '&:hover': { backgroundColor: colors.inputFocusBg },
                 }}
-                onClick={() => setOpen((prev) => !prev)}
+                onClick={() => setOpen(prev => !prev)}
               >
                 <EmojiIcon height={23} width={23} />
               </IconButton>
@@ -272,23 +285,20 @@ export const CreatePostModal = ({ setIsEdit }: Props) => {
                 htmlFor="image-upload"
                 sx={{
                   mr: 0.4,
-                  height: "22px",
-                  width: "22px",
+                  height: '22px',
+                  width: '22px',
                   borderRadius: 2,
-                  cursor: "pointer",
-                  "&:hover": { backgroundColor: colors.inputFocusBg },
+                  cursor: 'pointer',
+                  '&:hover': { backgroundColor: colors.inputFocusBg },
                 }}
               >
-                <Box
-                  component="img"
-                  src={IconImg}
-                  sx={{ display: "block" }}
-                ></Box>
+                <Box component="img" src={IconImg} sx={{ display: 'block' }}></Box>
 
                 <input
                   id="image-upload"
                   type="file"
                   accept="image/*"
+                  multiple
                   hidden
                   onChange={handleFileChange}
                 />
@@ -300,15 +310,15 @@ export const CreatePostModal = ({ setIsEdit }: Props) => {
             <ClickAwayListener onClickAway={() => setOpen(false)}>
               <Box
                 sx={{
-                  position: "fixed",
-                  left: "48%",
-                  top: "25%",
-                  transform: "scale(0.8)",
-                  transformOrigin: "top center",
-                  zIndex: 11,
+                  position: 'fixed',
+                  left: '48%',
+                  top: '25%',
+                  transform: 'scale(0.8)',
+                  transformOrigin: 'top center',
+                  zIndex: zIndex.modalPopover,
                 }}
               >
-                <Box sx={{ transform: "translateX(-50%)" }}>
+                <Box sx={{ transform: 'translateX(-50%)' }}>
                   <EmojiPicker
                     previewConfig={{ showPreview: false }}
                     onEmojiClick={handleEmojiClick}
@@ -320,5 +330,5 @@ export const CreatePostModal = ({ setIsEdit }: Props) => {
         </Box>
       </ModalContent>
     </Modal>
-  );
-};
+  )
+}

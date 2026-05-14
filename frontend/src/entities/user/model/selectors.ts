@@ -1,3 +1,3 @@
-import type { RootState } from "@app/store";
+import type { RootState } from '@shared/hooks'
 
-export const selectUser = (state: RootState) => state.user;
+export const selectUser = (state: RootState) => state.user

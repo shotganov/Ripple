@@ -1,7 +1,7 @@
 import {
-  BadRequestException,
   ConflictException,
   Injectable,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
@@ -9,6 +9,18 @@ import bcrypt from 'bcrypt';
 import { LoginDto } from './dto/login.dto';
 import { JwtService } from '@nestjs/jwt';
 import { CreateUserDto } from './dto/create-user.dto';
+import { Role } from '@prisma/client';
+import { avatarUrl, coverUrl } from 'src/shared/paths';
+
+const publicUserSelect = {
+  id: true,
+  username: true,
+  tag: true,
+  avatar: true,
+  coverImage: true,
+  bio: true,
+  role: true,
+} as const;
 
 @Injectable()
 export class AuthService {
@@ -17,13 +29,36 @@ export class AuthService {
     private jwtService: JwtService,
   ) {}
 
+  private async loadProfile(id: number) {
+    const [user, followersCount, followingCount] = await Promise.all([
+      this.prisma.user.findUnique({
+        where: { id },
+        select: publicUserSelect,
+      }),
+      this.prisma.follow.count({ where: { followingId: id } }),
+      this.prisma.follow.count({ where: { followerId: id } }),
+    ]);
+
+    if (!user) {
+      throw new NotFoundException('Пользователь не найден');
+    }
+
+    return {
+      ...user,
+      avatar: avatarUrl(user.avatar),
+      coverImage: coverUrl(user.coverImage),
+      followersCount,
+      followingCount,
+    };
+  }
+
   async login(loginDto: LoginDto) {
     const user = await this.prisma.user.findUnique({
-      where: { username: loginDto.username },
+      where: { tag: loginDto.tag },
     });
 
     if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException('Неверный логин или пароль');
     }
 
     const isPasswordValid = (await bcrypt.compare(
@@ -32,82 +67,52 @@ export class AuthService {
     )) as boolean;
 
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException('Неверный логин или пароль');
     }
 
+    const profile = await this.loadProfile(user.id);
     const payload = { userId: user.id, role: user.role };
-    const { passwordHash, ...userData } = user;
 
     return {
       token: await this.jwtService.signAsync(payload),
-      user: userData,
+      user: profile,
     };
   }
 
   async register(data: CreateUserDto) {
-    if (!data.username || data.username.trim() === '') {
-      throw new BadRequestException('Username is required');
-    }
-
-    if (!data.password || data.password.trim() === '') {
-      throw new BadRequestException('Password is required');
-    }
-
-    if (data.password.length < 6) {
-      throw new BadRequestException(
-        'Password must be at least 6 characters long',
-      );
-    }
-
-    if (data.password.length > 50) {
-      throw new BadRequestException('Password must not exceed 50 characters');
-    }
-
-    const username = data.username.trim();
-
-    if (username.length < 3) {
-      throw new BadRequestException(
-        'Username must be at least 3 characters long',
-      );
-    }
-
-    if (username.length > 50) {
-      throw new BadRequestException('Username must not exceed 50 characters');
-    }
+    const tag = data.tag.trim();
 
     const existing = await this.prisma.user.findUnique({
-      where: { username: username },
+      where: { tag },
     });
 
     if (existing) {
-      throw new ConflictException('Username already exists');
+      throw new ConflictException('Такой логин уже занят');
     }
 
     const salt = await bcrypt.genSalt();
     const passwordHash = await bcrypt.hash(data.password, salt);
 
-    const user = await this.prisma.user.create({
+    const username = tag;
+
+    const created = await this.prisma.user.create({
       data: {
-        username: username,
-        role: 'user',
+        username,
+        tag,
+        role: Role.USER,
         passwordHash,
-        avatar: data.avatar?.trim(),
+        avatar: data.avatar?.trim() || 'default.jpg',
         bio: data.bio?.trim(),
       },
-      select: {
-        id: true,
-        role: true,
-        username: true,
-        avatar: true,
-        bio: true,
-      },
+      select: { id: true, role: true },
     });
 
-    const payload = { userId: user.id, role: user.role };
+    const profile = await this.loadProfile(created.id);
+    const payload = { userId: created.id, role: created.role };
 
     return {
       token: await this.jwtService.signAsync(payload),
-      user: user,
+      user: profile,
     };
   }
 }

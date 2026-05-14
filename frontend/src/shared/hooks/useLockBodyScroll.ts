@@ -1,23 +1,27 @@
-import { useEffect } from "react";
+import { useEffect } from 'react'
 
-export const useLockBodyScroll = () => {
+type LockVariant = 'plain' | 'dim' | 'fullscreen'
+
+export const useLockBodyScroll = (enabled = true, variant: LockVariant = 'plain') => {
   useEffect(() => {
-    const previousOverflow = document.body.style.overflow;
-    document.documentElement.classList.add("modal-open");
-    document.body.style.overflow = "hidden";
-    const scrollBarWidth =
-      window.innerWidth - document.documentElement.clientWidth;
+    if (!enabled) return
 
-    if (scrollBarWidth > 0) {
-      document.body.style.paddingRight = `${scrollBarWidth}px`;
-      document.documentElement.style.paddingRight = `${scrollBarWidth}px`;
+    const html = document.documentElement
+    const previousOverflow = html.style.overflow
+    const previousGutter = html.style.scrollbarGutter
+
+    html.style.overflow = 'hidden'
+
+    if (variant === 'dim') {
+      html.classList.add('lock-dim')
+    } else if (variant === 'fullscreen') {
+      html.style.scrollbarGutter = 'auto'
     }
 
     return () => {
-      document.documentElement.classList.remove("modal-open");
-      document.body.style.overflow = previousOverflow;
-      document.body.style.paddingRight = "";
-      document.documentElement.style.paddingRight = "";
-    };
-  }, []);
-};
+      html.style.overflow = previousOverflow
+      html.style.scrollbarGutter = previousGutter
+      html.classList.remove('lock-dim')
+    }
+  }, [enabled, variant])
+}

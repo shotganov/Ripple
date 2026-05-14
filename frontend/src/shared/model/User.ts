@@ -1,8 +1,13 @@
+export type UserRole = 'USER' | 'ADMIN'
+
 export type User = {
-  id: number | null;
-  username: string;
-  tag: string;
-  avatar: string;
-  bio: string;
-  coverImage?: string;
-};
+  id: number
+  username: string
+  tag: string
+  avatar: string
+  role?: UserRole
+  bio?: string
+  coverImage?: string
+  followersCount?: number
+  followingCount?: number
+}

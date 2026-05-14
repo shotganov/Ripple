@@ -1,1 +1,1 @@
-export type FeedMode = "forYou" | "following";
+export type FeedMode = 'forYou' | 'following'

@@ -1,91 +1,127 @@
-﻿import { Box } from "@mui/material";
-import { useEffect, useState } from "react";
-import {
-  ChatDialog,
-  ChatList,
-  EmptyDialog,
-  type Chat,
-  type ChatMessage,
-} from "@features/chats";
-
-const chats: Chat[] = [
-  { id: 1, userName: "John" },
-  { id: 2, userName: "Johnium" },
-];
+import { Box } from '@mui/material'
+import type { Theme } from '@mui/material'
+import type { SystemStyleObject } from '@mui/system'
+import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import { ChatDialog, ChatList, EmptyDialog, useChatWithPeer, useChats } from '@features/chats'
+import { useGetUser } from '@features/profile'
+import type { ChatCompanion } from '@entities/chat'
+import { selectUser } from '@entities/user'
+import { useAppSelector } from '@shared/hooks'
+import { useDebouncedValue } from '@shared/lib'
+import { breakpoints, colors } from '@shared/styles'
 
 export const ChatPage = () => {
-  const [message, setMessage] = useState("");
-  const [chatId, setChatId] = useState(0);
-  const [messageList, setMessageList] = useState<ChatMessage[]>([]);
+  const user = useAppSelector(selectUser)
+  const [params, setParams] = useSearchParams()
+  const [searchQuery, setSearchQuery] = useState('')
+  const debouncedSearch = useDebouncedValue(searchQuery)
 
-  const selectedChat = chats.find((chat) => chat.id === chatId) ?? null;
+  const chatId = Number(params.get('id')) || null
+  const peerId = Number(params.get('peer')) || null
+
+  const chatsQuery = useChats(!!user, debouncedSearch)
+  const draftPeerQuery = useGetUser(peerId && !chatId ? peerId : Number.NaN)
+  const existingChatWithPeerQuery = useChatWithPeer(peerId && !chatId ? peerId : 0)
 
   useEffect(() => {
-    document.body.classList.toggle("chat-dialog-open", chatId > 0);
+    const existing = existingChatWithPeerQuery.data
+    if (peerId && !chatId && existing) {
+      setParams({ id: String(existing.id) }, { replace: true })
+    }
+  }, [peerId, chatId, existingChatWithPeerQuery.data, setParams])
 
+  useEffect(() => {
+    document.body.classList.toggle('chat-dialog-open', !!chatId || !!peerId)
     return () => {
-      document.body.classList.remove("chat-dialog-open");
-    };
-  }, [chatId]);
+      document.body.classList.remove('chat-dialog-open')
+    }
+  }, [chatId, peerId])
 
-  const handleSendMessage = (text: string, targetChatId: number) => {
-    const nextText = text.trim();
-    if (!nextText) return;
+  if (!user) return null
 
-    setMessageList([
-      ...messageList,
-      {
-        id: messageList.length + 1,
-        text: nextText,
-        chatId: targetChatId,
-      },
-    ]);
+  const chats = chatsQuery.data?.pages.flatMap(p => p.items) ?? []
+  const selectedChat = chatId ? (chats.find(c => c.id === chatId) ?? null) : null
 
-    setMessage("");
-  };
+  const draftCompanion: ChatCompanion | null =
+    peerId && !chatId && draftPeerQuery.data
+      ? {
+          id: draftPeerQuery.data.id,
+          username: draftPeerQuery.data.username,
+          tag: draftPeerQuery.data.tag,
+          avatar: draftPeerQuery.data.avatar ?? null,
+        }
+      : null
+
+  const handleSelectChat = (id: number) => {
+    setParams({ id: String(id) }, { replace: true })
+  }
+
+  const handleBack = () => {
+    setParams({}, { replace: true })
+  }
+
+  const handleChatCreated = (id: number) => {
+    setParams({ id: String(id) }, { replace: true })
+  }
+
+  const dialogCompanion = selectedChat?.companion ?? draftCompanion
 
   return (
-    <Box
-      sx={{
-        height: "100vh",
-        width: "100%",
-        py: 1,
-        "@media (max-width: 800px)": {
-          height: chatId > 0 ? "100vh" : "calc(100vh - 72px)",
-          py: 0,
-        },
-      }}
-    >
-      <Box
-        sx={{
-          display: "flex",
-          backgroundColor: "white",
-          height: "100%",
-          borderRadius: "0px 16px 16px 0px",
-          "@media (max-width: 1100px)": {
-            borderRadius: 0,
-          },
-        }}
-      >
+    <Box sx={rootSx(!!chatId || !!peerId)}>
+      <Box sx={containerSx}>
         <ChatList
           chats={chats}
           selectedChatId={chatId}
-          onSelectChat={setChatId}
+          isDraftActive={!!peerId && !chatId}
+          isLoading={chatsQuery.isLoading}
+          hasNextPage={chatsQuery.hasNextPage}
+          isFetchingNextPage={chatsQuery.isFetchingNextPage}
+          onLoadMore={() => chatsQuery.fetchNextPage()}
+          onSelectChat={handleSelectChat}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
         />
 
-        {selectedChat ? (
+        {dialogCompanion ? (
           <ChatDialog
-            chat={selectedChat}
-            message={message}
-            messages={messageList.filter((item) => item.chatId === chatId)}
-            onMessageChange={setMessage}
-            onSendMessage={() => handleSendMessage(message, chatId)}
-            onBack={() => setChatId(0)}
+            currentUserId={user.id}
+            chatId={chatId}
+            companion={dialogCompanion}
+            onBack={handleBack}
+            onChatCreated={handleChatCreated}
           />
         ) : (
           <EmptyDialog />
         )}
       </Box>
     </Box>
-  );
-};
+  )
+}
+
+const rootSx = (hasOpenDialog: boolean) =>
+  ({
+    py: 1,
+    height: '100vh',
+    width: '100%',
+    [breakpoints.mobile]: {
+      py: 0,
+      height: hasOpenDialog ? '100vh' : 'calc(100vh - 72px)',
+    },
+  }) as const
+
+const containerSx: SystemStyleObject<Theme> = {
+  display: 'flex',
+  backgroundColor: colors.surface,
+  height: '100%',
+  borderLeft: 0,
+  borderRadius: '0 16px 16px 0',
+  overflow: 'hidden',
+  [breakpoints.tablet]: {
+    borderRadius: 0,
+  },
+  [breakpoints.mobile]: {
+    border: 0,
+    borderRadius: 0,
+  },
+}

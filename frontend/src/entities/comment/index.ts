@@ -1,0 +1,8 @@
+export { type Comment } from './model/types'
+export { commentsMock } from './model/mock'
+export { CommentItem } from './ui/CommentItem'
+export { CommentsList } from './ui/CommentsList'
+export { getCommentsRequest } from './api/getCommentsApi'
+export type { CommentsPage } from './api/getCommentsApi'
+export { CommentSkeleton } from './ui/skeleton/CommentSkeleton'
+export { CommentSkeletonList } from './ui/skeleton/CommentSkeletonList'

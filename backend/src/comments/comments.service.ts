@@ -2,15 +2,26 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
+import { NotificationType } from '@prisma/client';
+import { InjectMetric } from '@willsoto/nestjs-prometheus';
+import { Counter } from 'prom-client';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { CreateCommentDto } from './dto/create-comment.dto';
+import { avatarUrl } from 'src/shared/paths';
+import { METRIC_COMMENTS_CREATED } from '../metrics/metrics.module';
 
 @Injectable()
 export class CommentsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private notifications: NotificationsService,
+    @InjectMetric(METRIC_COMMENTS_CREATED) private commentsCreated: Counter<string>,
+  ) {}
 
-  async getPostComments(postId: number) {
+  async getPostComments(postId: number, cursor?: number, limit = 20) {
     const post = await this.prisma.post.findUnique({
       where: { id: postId },
     });
@@ -19,6 +30,8 @@ export class CommentsService {
       throw new NotFoundException('Post not found');
     }
 
+    const take = Math.min(Math.max(limit, 1), 50);
+
     const comments = await this.prisma.comment.findMany({
       where: { postId },
       include: {
@@ -26,25 +39,29 @@ export class CommentsService {
           select: {
             id: true,
             username: true,
+            tag: true,
             avatar: true,
           },
         },
       },
-      orderBy: {
-        id: 'desc',
-      },
+      orderBy: { id: 'desc' },
+      take,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
     });
 
-    return comments.map((comment) => ({
+    const items = comments.map((comment) => ({
       id: comment.id,
-      postId: comment.postId,
-      userId: comment.userId,
       content: comment.content,
-      user: comment.user,
+      user: { ...comment.user, avatar: avatarUrl(comment.user.avatar) },
     }));
+
+    const nextCursor =
+      comments.length === take ? comments[comments.length - 1].id : null;
+
+    return { items, nextCursor };
   }
 
-  async createComment(postId: number, data: CreateCommentDto) {
+  async createComment(postId: number, userId: number, data: CreateCommentDto) {
     const post = await this.prisma.post.findUnique({
       where: { id: postId },
     });
@@ -54,7 +71,7 @@ export class CommentsService {
     }
 
     const user = await this.prisma.user.findUnique({
-      where: { id: data.userId },
+      where: { id: userId },
     });
 
     if (!user) {
@@ -70,7 +87,7 @@ export class CommentsService {
     const comment = await this.prisma.comment.create({
       data: {
         postId,
-        userId: data.userId,
+        userId,
         content,
       },
       include: {
@@ -78,32 +95,51 @@ export class CommentsService {
           select: {
             id: true,
             username: true,
+            tag: true,
             avatar: true,
           },
         },
       },
     });
 
+    this.commentsCreated.inc();
+
+    await this.notifications.create({
+      recipientId: post.userId,
+      actorId: userId,
+      type: NotificationType.COMMENT,
+      postId,
+      commentId: comment.id,
+    });
+
     return {
-      id: comment.id.toString(),
-      postId: comment.postId.toString(),
-      userId: comment.userId.toString(),
+      id: comment.id,
       content: comment.content,
       user: {
-        id: comment.user.id.toString(),
+        id: comment.user.id,
         username: comment.user.username,
+        tag: comment.user.tag,
         avatar: comment.user.avatar,
       },
+      createdAt: comment.createdAt,
     };
   }
 
-  async deleteComment(commentId: number) {
+  async deleteComment(
+    commentId: number,
+    userId: number,
+    role: 'USER' | 'ADMIN' = 'USER',
+  ) {
     const comment = await this.prisma.comment.findUnique({
       where: { id: commentId },
     });
 
     if (!comment) {
       throw new NotFoundException('Comment not found');
+    }
+
+    if (comment.userId !== userId && role !== 'ADMIN') {
+      throw new ForbiddenException('You can delete only your own comments');
     }
 
     await this.prisma.comment.delete({

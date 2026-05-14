@@ -1,91 +1,87 @@
 import {
   Injectable,
   NotFoundException,
-  ConflictException,
   BadRequestException,
 } from '@nestjs/common';
+import { NotificationType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { FollowDto } from './dto/follow-action.dto';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class FollowsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private notifications: NotificationsService,
+  ) {}
 
-  async followUser(userId: number, data: FollowDto) {
-    if (userId === data.followingId) {
+  async followUser(currentUserId: number, targetUserId: number) {
+    if (currentUserId === targetUserId) {
       throw new BadRequestException('You cannot follow yourself');
     }
 
-    const userToFollow = await this.prisma.user.findUnique({
-      where: { id: data.followingId },
+    const target = await this.prisma.user.findUnique({
+      where: { id: targetUserId },
     });
-
-    if (!userToFollow) {
+    if (!target) {
       throw new NotFoundException('User to follow not found');
     }
 
-    const follower = await this.prisma.user.findUnique({
-      where: { id: userId },
-    });
-
-    if (!follower) {
-      throw new NotFoundException('Follower not found');
-    }
-
-    const existingFollow = await this.prisma.follow.findUnique({
+    // upsert — повторный POST идемпотентен, без 409
+    await this.prisma.follow.upsert({
       where: {
         followerId_followingId: {
-          followerId: userId,
-          followingId: data.followingId,
+          followerId: currentUserId,
+          followingId: targetUserId,
         },
       },
-    });
-
-    if (existingFollow) {
-      throw new ConflictException('Already following this user');
-    }
-
-    await this.prisma.follow.create({
-      data: {
-        followerId: userId,
-        followingId: data.followingId,
+      update: {},
+      create: {
+        followerId: currentUserId,
+        followingId: targetUserId,
       },
     });
 
-    return;
+    await this.notifications.create({
+      recipientId: targetUserId,
+      actorId: currentUserId,
+      type: NotificationType.FOLLOW,
+    });
+
+    return { isFollowing: true };
   }
 
-  async unfollowUser(followerId: number, followingId: number) {
+  async unfollowUser(currentUserId: number, targetUserId: number) {
+    await this.prisma.follow.deleteMany({
+      where: {
+        followerId: currentUserId,
+        followingId: targetUserId,
+      },
+    });
+
+    await this.notifications.removeFollow(targetUserId, currentUserId);
+
+    return { isFollowing: false };
+  }
+
+  async getFollowStatus(currentUserId: number, targetUserId: number) {
+    if (currentUserId === targetUserId) {
+      return { isFollowing: false };
+    }
+
     const follow = await this.prisma.follow.findUnique({
       where: {
         followerId_followingId: {
-          followerId: followerId,
-          followingId: followingId,
+          followerId: currentUserId,
+          followingId: targetUserId,
         },
       },
     });
 
-    if (!follow) {
-      throw new NotFoundException('Follow relationship not found');
-    }
-
-    await this.prisma.follow.delete({
-      where: {
-        followerId_followingId: {
-          followerId: followerId,
-          followingId: followingId,
-        },
-      },
-    });
-
-    return { message: 'Successfully unfollowed user' };
+    return { isFollowing: !!follow };
   }
 
   async getFollowing(userId: number) {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-    });
-
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) {
       throw new NotFoundException('User not found');
     }
@@ -97,6 +93,7 @@ export class FollowsService {
           select: {
             id: true,
             username: true,
+            tag: true,
             avatar: true,
             bio: true,
           },
@@ -104,29 +101,12 @@ export class FollowsService {
       },
     });
 
-    const usersWithFollowing = await Promise.all(
-      follows.map(async (follow) => {
-        const followingUser = follow.following;
-
-        const userFollows = await this.prisma.follow.findMany({
-          where: { followerId: followingUser.id },
-          select: { followingId: true },
-        });
-
-        const userFollowingIds = userFollows.map((f) =>
-          f.followingId.toString(),
-        );
-
-        return {
-          id: followingUser.id.toString(),
-          username: followingUser.username,
-          avatar: followingUser.avatar || '',
-          bio: followingUser.bio || '',
-          following: userFollowingIds,
-        };
-      }),
-    );
-
-    return usersWithFollowing;
+    return follows.map((f) => ({
+      id: f.following.id,
+      username: f.following.username,
+      tag: f.following.tag,
+      avatar: f.following.avatar || '',
+      bio: f.following.bio || '',
+    }));
   }
 }

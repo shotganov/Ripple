@@ -1,22 +1,21 @@
-import { Box } from "@mui/material";
+import { Box } from '@mui/material'
+import type { Theme } from '@mui/material'
+import type { SystemStyleObject } from '@mui/system'
+import { breakpoints, colors } from '@shared/styles'
 
-export const EmptyDialog = () => (
-  <Box
-    sx={{
-      width: "100%",
-      height: "100%",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      color: "#334765",
-      fontSize: 18,
-      border: "1px solid #e2e8f0",
-      borderRadius: "0px 16px 16px 0px",
-      "@media (max-width: 1100px)": {
-        display: "none",
-      },
-    }}
-  >
-    Выберите чат
-  </Box>
-);
+export const EmptyDialog = () => <Box sx={rootSx}>Выберите чат</Box>
+
+const rootSx: SystemStyleObject<Theme> = {
+  width: '100%',
+  height: '100%',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  color: colors.textSoft,
+  fontSize: 18,
+  border: `1px solid ${colors.border}`,
+  borderRadius: '0px 16px 16px 0px',
+  [breakpoints.tablet]: {
+    display: 'none',
+  },
+}
