@@ -170,13 +170,6 @@ npm run dev
 
 Приложение откроется на `http://localhost:5173`.
 
-> **Важно:** по умолчанию фронтенд обращается к production-серверу. Для локального запуска откройте файл `src/shared/config/api.ts` и замените URL:
->
-> ```ts
-> // Заменить на:
-> const VITE_API_BASE_URL = "http://localhost:3000/api";
-> ```
-
 ## Тестовые данные
 
 После `npm run db:setup` (или `db:refresh`) в БД создаются тестовые пользователи.
