@@ -15,6 +15,7 @@ type Props = {
 export const UserFollowRow = ({ user, sizeAvatar = 40 }: Props) => {
   const me = useAppSelector(selectUser)
   const isOwn = me?.id === user.id
+  const isAdmin = me?.role === 'ADMIN'
   const followStatus = useFollowStatus(user.id, !isOwn)
   const toggleFollow = useToggleFollow(user.id)
 
@@ -29,9 +30,15 @@ export const UserFollowRow = ({ user, sizeAvatar = 40 }: Props) => {
 
   return (
     <Box sx={rowSx}>
-      <UserCard user={user} px={1.5} py={1.5} sizeAvatar={sizeAvatar} />
+      <UserCard
+        user={user}
+        px={1.5}
+        py={1.5}
+        sizeAvatar={sizeAvatar}
+        pr={isOwn || isAdmin ? 1.5 : 15.5}
+      />
 
-      {!isOwn && (
+      {!isOwn && !isAdmin && (
         <ButtonBase
           onClick={handleClick}
           disabled={toggleFollow.isPending || followStatus.isLoading}
@@ -63,15 +70,17 @@ const followButtonSx: SystemStyleObject<Theme> = {
   fontSize: 14,
   fontWeight: 700,
   transition: transitions.backgroundAndOpacity,
-  '&:hover': { opacity: 0.9 },
+  '&:hover': {
+    opacity: 0.9,
+  },
 }
 
 const followingButtonSx: SystemStyleObject<Theme> = {
   ...followButtonSx,
+  color: colors.black,
+  border: `1px solid ${colors.inputBorder}`,
   backgroundColor: colors.surface,
-  color: colors.accent,
   '&:hover': {
-    backgroundColor: colors.hoverBg,
-    opacity: 1,
+    backgroundColor: colors.inputBg,
   },
 }

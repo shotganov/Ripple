@@ -22,6 +22,7 @@ const outerSx: SystemStyleObject<Theme> = {
   pt: 1,
   background: `linear-gradient(${colors.pageBg} 20px, transparent 8px)`,
   [breakpoints.mobile]: {
+    position: 'relative',
     pt: 0,
     background: 'transparent',
   },
@@ -36,5 +37,6 @@ const innerSx: SystemStyleObject<Theme> = {
   borderBottom: 0,
   [breakpoints.mobile]: {
     borderRadius: 0,
+    borderTop: 0,
   },
 }

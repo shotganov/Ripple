@@ -1,13 +1,12 @@
 import { Box, ButtonBase, InputBase, Paper } from '@mui/material'
 import type { Theme } from '@mui/material'
 import type { SystemStyleObject } from '@mui/system'
-import { useState, type CSSProperties, type FormEvent } from 'react'
+import { useState, type CSSProperties } from 'react'
 import { enqueueSnackbar } from 'notistack'
 import AtIcon from '@shared/assets/icons/icon-at.svg?react'
 import LockIcon from '@shared/assets/icons/icon-lock.svg?react'
 import { colors, transitions } from '@shared/styles/tokens'
 import { useLogin, useRegister } from '../hooks/useAuth'
-import type { Auth } from '../model/Auth'
 
 export type AuthMode = 'login' | 'register'
 
@@ -19,6 +18,7 @@ type Props = {
 export const AuthForm = ({ mode, onModeChange }: Props) => {
   const [form, setForm] = useState({
     tag: '',
+    email: '',
     password: '',
     confirmPassword: '',
   })
@@ -26,22 +26,21 @@ export const AuthForm = ({ mode, onModeChange }: Props) => {
   const registerMutation = useRegister()
 
   const isRegister = mode === 'register'
-  const activeMutation = isRegister ? registerMutation : loginMutation
   const isPending = loginMutation.isPending || registerMutation.isPending
   const submitText = isRegister ? 'Зарегистрироваться' : 'Войти'
   const title = isRegister ? 'Регистрация' : 'Войти'
-  const subtitle = isRegister ? 'Создайте аккаунт и начните общение' : 'Введите логин и пароль'
+  const subtitle = isRegister ? 'Создайте аккаунт и начните общение' : 'Введите email и пароль'
 
-  function handleSubmit(e: FormEvent<HTMLFormElement>) {
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
 
-    if (!form.tag.trim() || !form.password) {
-      enqueueSnackbar('Введите логин и пароль', { variant: 'warning' })
+    if (!form.email.trim() || !form.password) {
+      enqueueSnackbar('Введите email и пароль', { variant: 'warning' })
       return
     }
 
-    if (form.tag.trim().length < 3) {
-      enqueueSnackbar('Логин должен быть не короче 3 символов', { variant: 'warning' })
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+      enqueueSnackbar('Введите корректный email', { variant: 'warning' })
       return
     }
 
@@ -50,28 +49,40 @@ export const AuthForm = ({ mode, onModeChange }: Props) => {
       return
     }
 
-    if (isRegister && form.password !== form.confirmPassword) {
-      enqueueSnackbar('Пароли не совпадают', { variant: 'warning' })
-      return
-    }
+    if (isRegister) {
+      if (!form.tag.trim()) {
+        enqueueSnackbar('Введите логин', { variant: 'warning' })
+        return
+      }
 
-    const auth: Auth = {
-      tag: form.tag.trim(),
-      password: form.password,
-    }
+      if (form.tag.trim().length < 3) {
+        enqueueSnackbar('Логин должен быть не короче 3 символов', { variant: 'warning' })
+        return
+      }
 
-    activeMutation.mutate(auth)
+      if (form.password !== form.confirmPassword) {
+        enqueueSnackbar('Пароли не совпадают', { variant: 'warning' })
+        return
+      }
+
+      registerMutation.mutate({
+        tag: form.tag.trim(),
+        email: form.email.trim().toLowerCase(),
+        password: form.password,
+      })
+    } else {
+      loginMutation.mutate({
+        email: form.email.trim().toLowerCase(),
+        password: form.password,
+      })
+    }
   }
 
   function handleChangeMode() {
     loginMutation.reset()
     registerMutation.reset()
     onModeChange(isRegister ? 'login' : 'register')
-    setForm({
-      tag: '',
-      password: '',
-      confirmPassword: '',
-    })
+    setForm({ tag: '', email: '', password: '', confirmPassword: '' })
   }
 
   return (
@@ -109,39 +120,38 @@ export const AuthForm = ({ mode, onModeChange }: Props) => {
             mb: 2,
           }}
         >
-          <Box
-            sx={{
-              fontSize: 40,
-              lineHeight: 1,
-              fontWeight: 700,
-              color: colors.accent,
-            }}
-          >
+          <Box sx={{ fontSize: 40, lineHeight: 1, fontWeight: 700, color: colors.accent }}>
             {title}
           </Box>
-          <Box
-            sx={{
-              fontSize: 17,
-              fontWeight: 700,
-              color: colors.textSoft,
-            }}
-          >
-            {subtitle}
-          </Box>
+          <Box sx={{ fontSize: 17, fontWeight: 700, color: colors.textSoft }}>{subtitle}</Box>
         </Box>
 
         <Box>
           <Box sx={labelSx}>Учетная запись</Box>
           <InputBase
-            type="text"
-            placeholder="Логин"
-            value={form.tag}
+            type="email"
+            placeholder="Email"
+            value={form.email}
             disabled={isPending}
-            onChange={e => setForm({ ...form, tag: e.target.value })}
+            onChange={e => setForm({ ...form, email: e.target.value })}
             startAdornment={<AtIcon style={inputIconStyle} />}
             sx={inputSx}
           />
         </Box>
+
+        {isRegister && (
+          <Box>
+            <InputBase
+              type="text"
+              placeholder="Логин"
+              value={form.tag}
+              disabled={isPending}
+              onChange={e => setForm({ ...form, tag: e.target.value })}
+              startAdornment={<AtIcon style={inputIconStyle} />}
+              sx={inputSx}
+            />
+          </Box>
+        )}
 
         <Box>
           <InputBase
@@ -159,7 +169,7 @@ export const AuthForm = ({ mode, onModeChange }: Props) => {
           <Box>
             <InputBase
               type="password"
-              placeholder="Пароль еще раз"
+              placeholder="Пароль ещё раз"
               value={form.confirmPassword}
               disabled={isPending}
               onChange={e => setForm({ ...form, confirmPassword: e.target.value })}

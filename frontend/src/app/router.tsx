@@ -14,7 +14,7 @@ import { PostPage } from '@pages/PostPage'
 import { ProfilePage } from '@pages/ProfilePage'
 import { SearchPage } from '@pages/SearchPage'
 import { MainLayout } from './MainLayout'
-import { routePatterns } from '@shared/config/routes'
+import { routePatterns, routes } from '@shared/config/routes'
 
 export const AppRouter = () => (
   <Routes>
@@ -61,5 +61,6 @@ export const AppRouter = () => (
         }
       />
     </Route>
+    <Route path="*" element={<Navigate to={routes.feed} replace />} />
   </Routes>
 )

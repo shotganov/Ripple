@@ -1,9 +1,10 @@
-import { Box } from '@mui/material'
+import { Box, ButtonBase } from '@mui/material'
 import type { Theme } from '@mui/material'
 import type { SystemStyleObject } from '@mui/system'
-import { Avatar, UserInline } from '@shared/ui'
+import { useNavigate } from 'react-router-dom'
+import { Avatar, UnstyledLink, UserInline } from '@shared/ui'
 import { resolveAssetUrl } from '@shared/config'
-import { breakpoints, colors } from '@shared/styles'
+import { breakpoints, colors, radius } from '@shared/styles'
 import { routes } from '@shared/config/routes'
 import type { Notification } from '../model/types'
 
@@ -17,33 +18,66 @@ const kindText: Record<Notification['type'], string> = {
   FOLLOW: 'подписался на вас',
 }
 
-export const NotificationItem = ({ notification }: Props) => {
-  return (
-    <Box sx={[rootSx, !notification.isRead && unreadSx]}>
-      <Avatar src={resolveAssetUrl(notification.actor.avatar)} size={44} />
+const getNotificationLink = (notification: Notification): string => {
+  if (notification.type === 'FOLLOW') return routes.profile(notification.actor.id)
+  if (notification.type === 'COMMENT' && notification.comment && notification.post) {
+    return `${routes.post(notification.post.id)}#comment-${notification.comment.id}`
+  }
+  if (notification.post) return routes.post(notification.post.id)
+  return routes.feed
+}
 
+export const NotificationItem = ({ notification }: Props) => {
+  const images = notification.post?.images ?? []
+  const navigate = useNavigate()
+
+  return (
+    <ButtonBase
+      onClick={() => navigate(getNotificationLink(notification))}
+      sx={[rootSx, !notification.isRead && unreadSx]}
+    >
+      <UnstyledLink
+        to={routes.profile(notification.actor.id)}
+        sx={{ display: 'flex', alignItems: 'flex-start', alignSelf: 'flex-start' }}
+        onClick={e => e.stopPropagation()}
+      >
+        <Avatar src={resolveAssetUrl(notification.actor.avatar)} size={48} />
+      </UnstyledLink>
       <Box sx={contentSx}>
         <UserInline
           username={notification.actor.username}
           tag={notification.actor.tag}
           to={routes.profile(notification.actor.id)}
+          onClick={e => e.stopPropagation()}
         />
 
-        <Box sx={textSx}>{kindText[notification.type]}</Box>
+        <Box>
+          <Box sx={textSx}>{kindText[notification.type]}</Box>
+          {notification.post?.content && notification.type === 'LIKE' && (
+            <Box sx={postPreviewSx}>{notification.post.content}</Box>
+          )}
 
-        {notification.post && <Box sx={postPreviewSx}>{notification.post.content}</Box>}
-
-        {notification.comment && <Box sx={commentPreviewSx}>{notification.comment.content}</Box>}
+          {images.length > 0 && notification.type === 'LIKE' && (
+            <Box sx={imageRowSx}>
+              {images.map((src, i) => (
+                <Box key={i} component="img" src={resolveAssetUrl(src)} alt="" sx={imageSx} />
+              ))}
+            </Box>
+          )}
+        </Box>
       </Box>
-    </Box>
+    </ButtonBase>
   )
 }
 
 const rootSx: SystemStyleObject<Theme> = {
   display: 'flex',
+  width: '100%',
   alignItems: 'flex-start',
-  gap: 2,
-  p: 2,
+  textAlign: 'left',
+  gap: 1.5,
+  py: 1.5,
+  px: 2,
   backgroundColor: colors.surface,
   borderBottom: `1px solid ${colors.border}`,
   transition: 'background-color 220ms ease',
@@ -59,35 +93,37 @@ const unreadSx: SystemStyleObject<Theme> = {
 const contentSx: SystemStyleObject<Theme> = {
   display: 'flex',
   flexDirection: 'column',
-  gap: 0.5,
+  gap: 1,
   minWidth: 0,
   flex: 1,
 }
 
 const textSx: SystemStyleObject<Theme> = {
   fontSize: 15,
-  lineHeight: 1.4,
-  color: colors.textSoft,
+  lineHeight: 1.3,
+  color: colors.black,
 }
 
 const postPreviewSx: SystemStyleObject<Theme> = {
   mt: 0.5,
-  fontSize: 14,
+  fontSize: 13,
+  lineHeight: 1.3,
   color: colors.textMuted,
-  overflow: 'hidden',
-  textOverflow: 'ellipsis',
-  display: '-webkit-box',
-  WebkitLineClamp: 2,
-  WebkitBoxOrient: 'vertical',
+  whiteSpace: 'pre-wrap',
 }
 
-const commentPreviewSx: SystemStyleObject<Theme> = {
+
+const imageRowSx: SystemStyleObject<Theme> = {
+  display: 'flex',
+  flexWrap: 'wrap',
+  gap: 0.75,
   mt: 0.5,
-  fontSize: 14,
-  color: colors.text,
-  overflow: 'hidden',
-  textOverflow: 'ellipsis',
-  display: '-webkit-box',
-  WebkitLineClamp: 2,
-  WebkitBoxOrient: 'vertical',
+}
+
+const imageSx: SystemStyleObject<Theme> = {
+  width: 100,
+  height: 100,
+  objectFit: 'cover',
+  borderRadius: radius.sm,
+  display: 'block',
 }

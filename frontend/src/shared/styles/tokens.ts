@@ -23,6 +23,7 @@ export const colors = {
   comment: '#2b7fff',
   black: '#000000',
   error: '#dc2626',
+  skyMist: '#cfd9de',
 } as const
 
 export const alphaColors = {

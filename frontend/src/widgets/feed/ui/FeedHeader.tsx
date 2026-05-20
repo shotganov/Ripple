@@ -20,7 +20,7 @@ export const FeedHeader = ({ activeMode, onModeChange, tabs }: FeedHeaderProps) 
   return (
     <StickyTopBar>
       <Paper elevation={0} sx={tabsPaperSx}>
-        {tabs.map(tab => {
+        {tabs.map((tab) => {
           const active = activeMode === tab.value
 
           return (
@@ -56,7 +56,7 @@ export const FeedHeader = ({ activeMode, onModeChange, tabs }: FeedHeaderProps) 
 
 const tabsPaperSx: SystemStyleObject<Theme> = {
   display: 'flex',
-  borderRadius: 0,
+  borderRadius: `16px 16px 0 0`,
   borderBottom: `1px solid ${colors.border}`,
   backgroundColor: 'transparent',
   overflow: 'hidden',

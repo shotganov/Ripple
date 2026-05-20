@@ -18,7 +18,8 @@ export class CommentsService {
   constructor(
     private prisma: PrismaService,
     private notifications: NotificationsService,
-    @InjectMetric(METRIC_COMMENTS_CREATED) private commentsCreated: Counter<string>,
+    @InjectMetric(METRIC_COMMENTS_CREATED)
+    private commentsCreated: Counter<string>,
   ) {}
 
   async getPostComments(postId: number, cursor?: number, limit = 20) {
@@ -52,6 +53,7 @@ export class CommentsService {
     const items = comments.map((comment) => ({
       id: comment.id,
       content: comment.content,
+      createdAt: comment.createdAt,
       user: { ...comment.user, avatar: avatarUrl(comment.user.avatar) },
     }));
 

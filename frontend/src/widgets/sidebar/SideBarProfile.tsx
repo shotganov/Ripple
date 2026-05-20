@@ -15,7 +15,7 @@ type SideBarProfileProps = {
 }
 
 export const SideBarProfile = ({ isOpen, onLogout, onToggle, user }: SideBarProfileProps) => {
-  const userTag = user.tag || 'fsdfd'
+  const userTag = user.tag
 
   const handleClickAway = () => {
     if (isOpen) onToggle()
@@ -23,39 +23,39 @@ export const SideBarProfile = ({ isOpen, onLogout, onToggle, user }: SideBarProf
 
   return (
     <ClickAwayListener onClickAway={handleClickAway}>
-    <Box
-      sx={{
-        position: 'relative',
-        width: '100%',
-        [breakpoints.compactSidebar]: {
-          display: 'flex',
-          justifyContent: 'center',
-        },
-        [breakpoints.mobile]: { display: 'none' },
-      }}
-    >
-      {isOpen && (
-        <Box sx={menuSx}>
-          <ButtonBase onClick={onLogout} sx={logoutButtonSx}>
-            Выйти @{userTag}
-          </ButtonBase>
-        </Box>
-      )}
-
-      <ButtonBase onClick={onToggle} sx={profileButtonSx}>
-        <Box sx={profileInfoSx}>
-          <Avatar src={resolveAssetUrl(user.avatar)} size={44} />
-
-          <Box sx={sxAdaptive}>
-            <Box sx={{ lineHeight: 1.2, fontSize: 15, fontWeight: 500 }}>{user.username}</Box>
-            <Box sx={{ fontSize: 15, color: colors.textMuted }}>@{userTag}</Box>
+      <Box
+        sx={{
+          position: 'relative',
+          width: '100%',
+          [breakpoints.compactSidebar]: {
+            display: 'flex',
+            justifyContent: 'center',
+          },
+          [breakpoints.mobile]: { display: 'none' },
+        }}
+      >
+        {isOpen && (
+          <Box sx={menuSx}>
+            <ButtonBase onClick={onLogout} sx={logoutButtonSx}>
+              Выйти @{userTag}
+            </ButtonBase>
           </Box>
-        </Box>
-        <Box sx={moreIconSx}>
-          <MoreIcon width={14} />
-        </Box>
-      </ButtonBase>
-    </Box>
+        )}
+
+        <ButtonBase onClick={onToggle} sx={profileButtonSx}>
+          <Box sx={profileInfoSx}>
+            <Avatar src={resolveAssetUrl(user.avatar)} size={44} />
+
+            <Box sx={sxAdaptive}>
+              <Box sx={{ lineHeight: 1.2, fontSize: 15, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user.username}</Box>
+              <Box sx={{ fontSize: 15, color: colors.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>@{userTag}</Box>
+            </Box>
+          </Box>
+          <Box sx={moreIconSx}>
+            <MoreIcon width={14} />
+          </Box>
+        </ButtonBase>
+      </Box>
     </ClickAwayListener>
   )
 }
@@ -66,8 +66,7 @@ const menuSx: SystemStyleObject<Theme> = {
   right: 0,
   bottom: 'calc(100% + 12px)',
   zIndex: zIndex.sidebarMenu,
-  p: 1,
-  borderRadius: 4,
+  borderRadius: radius.lg,
   border: `1px solid ${colors.border}`,
   backgroundColor: colors.surface,
   color: colors.text,
@@ -77,37 +76,47 @@ const menuSx: SystemStyleObject<Theme> = {
     right: 'auto',
     width: 260,
   },
-  '&::after': {
-    content: '""',
-    position: 'absolute',
-    left: '50%',
-    bottom: -8,
-    width: 16,
-    height: 16,
-    borderRight: `1px solid ${colors.border}`,
-    borderBottom: `1px solid ${colors.border}`,
-    backgroundColor: colors.surface,
-    transform: 'translateX(-50%) rotate(45deg)',
-    [breakpoints.compactSidebar]: {
-      left: 24,
-    },
-  },
 }
 
 const logoutButtonSx: SystemStyleObject<Theme> = {
   width: '100%',
   justifyContent: 'flex-start',
-  px: 2,
-  py: 1.5,
-  borderRadius: radius.md,
-  color: colors.textSoft,
-  fontSize: 16,
-  fontWeight: 700,
+  p: 2,
+  borderRadius: radius.lg,
+  color: colors.black,
+  fontSize: 15,
+  fontWeight: 500,
   textAlign: 'left',
+  position: 'relative',
   transition: transitions.background,
+  '&::before': {
+    content: '""',
+    position: 'absolute',
+    left: '50%',
+    bottom: -10,
+    transform: 'translateX(-50%)',
+    borderLeft: '10px solid transparent',
+    borderRight: '10px solid transparent',
+    borderTop: `10px solid ${colors.border}`,
+    [breakpoints.compactSidebar]: { left: 28 },
+  },
+  '&::after': {
+    content: '""',
+    position: 'absolute',
+    left: '50%',
+    bottom: -9,
+    transform: 'translateX(-50%)',
+    borderLeft: '9px solid transparent',
+    borderRight: '9px solid transparent',
+    borderTop: `9px solid ${colors.surface}`,
+    transition: `border-top-color 150ms ease`,
+    [breakpoints.compactSidebar]: { left: 29 },
+  },
   '&:hover': {
-    color: colors.text,
     backgroundColor: colors.inputBg,
+    '&::after': {
+      borderTopColor: colors.inputBg,
+    },
   },
 }
 

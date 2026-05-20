@@ -12,6 +12,7 @@ type SideBarNavProps = {
   userId: number
   notificationsCount: number
   messagesCount: number
+  reportsCount: number
 }
 
 type NavItemProps = {
@@ -41,13 +42,19 @@ const NavItem = ({ item, badgeCount }: NavItemProps) => {
   )
 }
 
-const badgeFor = (path: string, notifications: number, messages: number) => {
+const badgeFor = (path: string, notifications: number, messages: number, reports: number) => {
   if (path === '/notifications') return notifications
   if (path === '/chat') return messages
+  if (path === '/admin/reports') return reports
   return 0
 }
 
-export const SideBarNav = ({ userId, notificationsCount, messagesCount }: SideBarNavProps) => {
+export const SideBarNav = ({
+  userId,
+  notificationsCount,
+  messagesCount,
+  reportsCount,
+}: SideBarNavProps) => {
   const user = useAppSelector(selectUser)
   const isAdmin = user?.role === 'ADMIN'
 
@@ -66,7 +73,7 @@ export const SideBarNav = ({ userId, notificationsCount, messagesCount }: SideBa
             <NavItem
               key={item.path}
               item={item}
-              badgeCount={badgeFor(item.path, notificationsCount, messagesCount)}
+              badgeCount={badgeFor(item.path, notificationsCount, messagesCount, reportsCount)}
             />
           )
         })}
@@ -147,7 +154,7 @@ const badgeSx: SystemStyleObject<Theme> = {
   px: 0.5,
   borderRadius: radius.pill,
   border: `1px solid ${colors.surface}`,
-  backgroundColor: colors.like,
+  backgroundColor: colors.accent,
   color: colors.surface,
   fontSize: 11,
   fontWeight: 700,

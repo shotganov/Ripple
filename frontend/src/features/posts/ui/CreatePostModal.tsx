@@ -129,10 +129,7 @@ export const CreatePostModal = ({ setIsOpen }: Props) => {
           <ModalActionButton
             variant="primary"
             onClick={() => handleCreatePost(text)}
-            disabled={
-              (text.trim().length === 0 && images.length === 0) ||
-              text.trim().length > 300
-            }
+            disabled={(text.trim().length === 0 && images.length === 0) || text.trim().length > 300}
           >
             Опубликовать
           </ModalActionButton>
@@ -272,7 +269,8 @@ export const CreatePostModal = ({ setIsOpen }: Props) => {
                   height: '23px',
                   width: '23px',
                   color: colors.textSoft,
-                  borderRadius: 2,
+                  opacity: 0.9,
+                  borderRadius: radius.pill,
                   '&:hover': { backgroundColor: colors.inputFocusBg },
                 }}
                 onClick={() => setOpen(prev => !prev)}
@@ -311,19 +309,17 @@ export const CreatePostModal = ({ setIsOpen }: Props) => {
               <Box
                 sx={{
                   position: 'fixed',
-                  left: '48%',
+                  left: '50%',
                   top: '25%',
-                  transform: 'scale(0.8)',
+                  transform: 'translateX(-50%) scale(0.8)',
                   transformOrigin: 'top center',
                   zIndex: zIndex.modalPopover,
                 }}
               >
-                <Box sx={{ transform: 'translateX(-50%)' }}>
-                  <EmojiPicker
-                    previewConfig={{ showPreview: false }}
-                    onEmojiClick={handleEmojiClick}
-                  />
-                </Box>
+                <EmojiPicker
+                  previewConfig={{ showPreview: false }}
+                  onEmojiClick={handleEmojiClick}
+                />
               </Box>
             </ClickAwayListener>
           )}

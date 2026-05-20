@@ -6,6 +6,7 @@ import {
   type InfiniteData,
   type QueryClient,
 } from '@tanstack/react-query'
+import { enqueueSnackbar } from 'notistack'
 import {
   getFeedRequest,
   getPostRequest,
@@ -156,6 +157,7 @@ export const useCreatePost = () => {
     mutationFn: (post: CreatePost) => createPostRequest(post),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['posts'] })
+      enqueueSnackbar('Пост опубликован', { variant: 'success' })
     },
   })
 }

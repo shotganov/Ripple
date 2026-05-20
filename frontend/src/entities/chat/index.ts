@@ -1,2 +1,2 @@
 export { ChatItem } from './ui/ChatItem'
-export type { Chat, ChatCompanion, ChatLastMessage } from './model/types'
+export type { Chat, ChatLastMessage } from './model/types'

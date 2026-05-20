@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -35,11 +36,24 @@ export class ReportsController {
     return this.reports.create(user.userId, dto);
   }
 
+  @Get('admin/reports/count')
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  pendingCount(@CurrentUser() user: CurrentUserPayload) {
+    return this.reports.pendingCount(user.userId);
+  }
+
+  @Post('admin/reports/seen')
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  @HttpCode(HttpStatus.OK)
+  markSeen(@CurrentUser() user: CurrentUserPayload) {
+    return this.reports.markSeen(user.userId);
+  }
+
   @Get('admin/reports')
   @UseGuards(JwtAuthGuard, AdminGuard)
   list(@Query() query: ListReportsQueryDto) {
     return this.reports.list(
-      query.cursor,
+      query.offset,
       query.limit,
       query.status,
       query.archived,
@@ -51,5 +65,18 @@ export class ReportsController {
   @HttpCode(HttpStatus.OK)
   dismiss(@Param('id', ParseIntPipe) id: number) {
     return this.reports.dismiss(id);
+  }
+
+  @Patch('admin/reports/:type/:targetId/dismiss')
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  @HttpCode(HttpStatus.OK)
+  dismissByTarget(
+    @Param('type') type: string,
+    @Param('targetId', ParseIntPipe) targetId: number,
+  ) {
+    if (type !== 'post' && type !== 'comment') {
+      throw new BadRequestException('type must be post or comment');
+    }
+    return this.reports.dismissByTarget(type, targetId);
   }
 }

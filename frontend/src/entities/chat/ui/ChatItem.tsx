@@ -35,8 +35,9 @@ export const ChatItem = ({ isActive, onClick, chat }: Props) => {
         sx={{
           display: 'flex',
           alignItems: 'center',
-          gap: 2,
-          p: 2,
+          gap: 1.5,
+          py: 2,
+          px: 1.5,
           width: '100%',
         }}
       >
@@ -44,9 +45,11 @@ export const ChatItem = ({ isActive, onClick, chat }: Props) => {
 
         <Box
           sx={{
+            py: '1px',
             display: 'flex',
+            alignSelf: 'stretch',
             flexDirection: 'column',
-            gap: 0.5,
+            justifyContent: 'space-between',
             minWidth: 0,
             flex: 1,
           }}

@@ -31,7 +31,7 @@ export const CommentsList = ({
           onLoadMore()
         }
       },
-      { rootMargin: '400px 0px' },
+      { rootMargin: '200px 0px' },
     )
     obs.observe(el)
     return () => obs.disconnect()
@@ -54,8 +54,18 @@ export const CommentsList = ({
       }}
     >
       <Box sx={{ '& > :last-of-type': { borderBottom: 0 } }}>
-        {comments.map(c => (
-          <CommentItem key={c.id} comment={c} menu={renderMenu?.(c)} />
+        {comments.map((c, i) => (
+          <Box
+            key={c.id}
+            id={`comment-${c.id}`}
+            sx={
+              i === comments.length - 1 && !hasNextPage
+                ? { '& > *': { borderBottom: 0 } }
+                : undefined
+            }
+          >
+            <CommentItem comment={c} menu={renderMenu?.(c)} />
+          </Box>
         ))}
         {hasNextPage && <Box ref={sentinelRef} sx={{ height: 1 }} />}
       </Box>

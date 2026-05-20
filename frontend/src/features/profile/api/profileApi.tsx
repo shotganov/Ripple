@@ -5,6 +5,7 @@ import type { UpdateProfilePayload } from '../model/types'
 const buildFormData = (payload: UpdateProfilePayload): FormData => {
   const form = new FormData()
   if (payload.username !== undefined) form.append('username', payload.username)
+  if (payload.tag !== undefined) form.append('tag', payload.tag)
   if (payload.bio !== undefined) form.append('bio', payload.bio)
   if (payload.avatarFile) form.append('avatar', payload.avatarFile)
   if (payload.coverFile) form.append('coverImage', payload.coverFile)

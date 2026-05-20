@@ -8,81 +8,29 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateReportDto } from './dto/create-report.dto';
 import { avatarUrl, postImageUrl } from '../shared/paths';
 
-const reportActorSelect = {
+const actorSelect = {
   id: true,
   username: true,
   tag: true,
   avatar: true,
 } as const;
 
-const reportInclude = {
-  reporter: { select: reportActorSelect },
-  post: {
-    select: {
-      id: true,
-      content: true,
-      images: true,
-      createdAt: true,
-      _count: { select: { likes: true, comments: true } },
-      user: { select: reportActorSelect },
-    },
-  },
-  comment: {
-    select: {
-      id: true,
-      content: true,
-      postId: true,
-      user: { select: reportActorSelect },
-    },
-  },
-} as const;
+interface PostRow {
+  id: number;
+  content: string;
+  images: string[];
+  createdAt: Date;
+  _count: { likes: number; comments: number };
+  user: { id: number; username: string; tag: string; avatar: string | null };
+}
 
-type ReportWithRelations = Prisma.ReportGetPayload<{
-  include: typeof reportInclude;
-}>;
-
-const formatReport = (r: ReportWithRelations) => ({
-  id: r.id,
-  reason: r.reason,
-  status: r.status,
-  createdAt: r.createdAt,
-  resolvedAt: r.resolvedAt,
-  reporter: {
-    id: r.reporter.id,
-    username: r.reporter.username,
-    tag: r.reporter.tag,
-    avatar: avatarUrl(r.reporter.avatar),
-  },
-  post: r.post
-    ? {
-        id: r.post.id,
-        content: r.post.content,
-        images: r.post.images.map(postImageUrl),
-        createdAt: r.post.createdAt,
-        likes: r.post._count.likes,
-        comments: r.post._count.comments,
-        user: {
-          id: r.post.user.id,
-          username: r.post.user.username,
-          tag: r.post.user.tag,
-          avatar: avatarUrl(r.post.user.avatar),
-        },
-      }
-    : null,
-  comment: r.comment
-    ? {
-        id: r.comment.id,
-        content: r.comment.content,
-        postId: r.comment.postId,
-        user: {
-          id: r.comment.user.id,
-          username: r.comment.user.username,
-          tag: r.comment.user.tag,
-          avatar: avatarUrl(r.comment.user.avatar),
-        },
-      }
-    : null,
-});
+interface CommentRow {
+  id: number;
+  content: string;
+  postId: number;
+  createdAt: Date;
+  user: { id: number; username: string; tag: string; avatar: string | null };
+}
 
 @Injectable()
 export class ReportsService {
@@ -133,32 +81,197 @@ export class ReportsService {
   }
 
   async list(
-    cursor: number | undefined,
+    offset = 0,
     limit = 20,
     status?: ReportStatus,
     archived?: boolean,
   ) {
     const take = Math.min(Math.max(limit, 1), 50);
+    const skip = Math.max(offset, 0);
 
-    const where = status
+    const statusWhere: Prisma.ReportWhereInput = status
       ? { status }
       : archived
         ? { status: { not: ReportStatus.PENDING } }
-        : undefined;
+        : { status: ReportStatus.PENDING };
 
-    const rows = await this.prisma.report.findMany({
-      where,
-      include: reportInclude,
-      orderBy: { id: 'desc' },
-      take,
-      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+    // Group by postId — aggregate pending reports per post
+    const postGroups = await this.prisma.report.groupBy({
+      by: ['postId'],
+      where: { ...statusWhere, postId: { not: null } },
+      _count: { id: true },
+      _max: { createdAt: true },
+      orderBy: { _max: { createdAt: 'desc' } },
     });
 
-    const items = rows.map(formatReport);
-    const nextCursor =
-      rows.length === take ? rows[rows.length - 1].id : null;
+    // Group by commentId
+    const commentGroups = await this.prisma.report.groupBy({
+      by: ['commentId'],
+      where: { ...statusWhere, commentId: { not: null } },
+      _count: { id: true },
+      _max: { createdAt: true },
+      orderBy: { _max: { createdAt: 'desc' } },
+    });
 
-    return { items, nextCursor };
+    // Merge and sort by latestReportAt desc
+    type GroupEntry =
+      | { type: 'post'; targetId: number; count: number; latestAt: Date }
+      | { type: 'comment'; targetId: number; count: number; latestAt: Date };
+
+    const merged: GroupEntry[] = [
+      ...postGroups.map((g) => ({
+        type: 'post' as const,
+        targetId: g.postId!,
+        count: g._count.id,
+        latestAt: g._max.createdAt!,
+      })),
+      ...commentGroups.map((g) => ({
+        type: 'comment' as const,
+        targetId: g.commentId!,
+        count: g._count.id,
+        latestAt: g._max.createdAt!,
+      })),
+    ].sort((a, b) => b.latestAt.getTime() - a.latestAt.getTime());
+
+    const page = merged.slice(skip, skip + take);
+    const total = merged.length;
+
+    // Fetch reasons and content for this page
+    const postIds = page.filter((g) => g.type === 'post').map((g) => g.targetId);
+    const commentIds = page.filter((g) => g.type === 'comment').map((g) => g.targetId);
+
+    const postsData: PostRow[] = postIds.length
+      ? await this.prisma.post.findMany({
+          where: { id: { in: postIds } },
+          select: {
+            id: true,
+            content: true,
+            images: true,
+            createdAt: true,
+            _count: { select: { likes: true, comments: true } },
+            user: { select: actorSelect },
+          },
+        })
+      : [];
+
+    const commentsData: CommentRow[] = commentIds.length
+      ? await this.prisma.comment.findMany({
+          where: { id: { in: commentIds } },
+          select: {
+            id: true,
+            content: true,
+            postId: true,
+            createdAt: true,
+            user: { select: actorSelect },
+          },
+        })
+      : [];
+
+    const reasonsByPost: { postId: number | null; reason: string }[] = postIds.length
+      ? await this.prisma.report.findMany({
+          where: { ...statusWhere, postId: { in: postIds } },
+          select: { postId: true, reason: true },
+          distinct: ['postId', 'reason'],
+        })
+      : [];
+
+    const reasonsByComment: { commentId: number | null; reason: string }[] = commentIds.length
+      ? await this.prisma.report.findMany({
+          where: { ...statusWhere, commentId: { in: commentIds } },
+          select: { commentId: true, reason: true },
+          distinct: ['commentId', 'reason'],
+        })
+      : [];
+
+    const postMap = new Map<number, PostRow>(postsData.map((p) => [p.id, p]));
+    const commentMap = new Map<number, CommentRow>(commentsData.map((c) => [c.id, c]));
+
+    const reasonsForPost = new Map<number, string[]>();
+    for (const r of reasonsByPost) {
+      if (!r.postId) continue;
+      const arr = reasonsForPost.get(r.postId) ?? [];
+      arr.push(r.reason);
+      reasonsForPost.set(r.postId, arr);
+    }
+
+    const reasonsForComment = new Map<number, string[]>();
+    for (const r of reasonsByComment) {
+      if (!r.commentId) continue;
+      const arr = reasonsForComment.get(r.commentId) ?? [];
+      arr.push(r.reason);
+      reasonsForComment.set(r.commentId, arr);
+    }
+
+    const items = page.map((g) => {
+      if (g.type === 'post') {
+        const post = postMap.get(g.targetId);
+        return {
+          type: 'post' as const,
+          targetId: g.targetId,
+          reportCount: g.count,
+          latestReportAt: g.latestAt,
+          reasons: reasonsForPost.get(g.targetId) ?? [],
+          post: post
+            ? {
+                id: post.id,
+                content: post.content,
+                images: post.images.map(postImageUrl),
+                createdAt: post.createdAt,
+                likes: post._count.likes,
+                comments: post._count.comments,
+                user: { ...post.user, avatar: avatarUrl(post.user.avatar) },
+              }
+            : null,
+        };
+      } else {
+        const comment = commentMap.get(g.targetId);
+        return {
+          type: 'comment' as const,
+          targetId: g.targetId,
+          reportCount: g.count,
+          latestReportAt: g.latestAt,
+          reasons: reasonsForComment.get(g.targetId) ?? [],
+          comment: comment
+            ? {
+                id: comment.id,
+                content: comment.content,
+                postId: comment.postId,
+                createdAt: comment.createdAt,
+                user: {
+                  ...comment.user,
+                  avatar: avatarUrl(comment.user.avatar),
+                },
+              }
+            : null,
+        };
+      }
+    });
+
+    return { items, total, offset: skip, limit: take };
+  }
+
+  async pendingCount(adminId: number) {
+    const admin = await this.prisma.user.findUnique({
+      where: { id: adminId },
+      select: { reportsSeenAt: true },
+    });
+    const where = {
+      status: ReportStatus.PENDING,
+      ...(admin?.reportsSeenAt && { createdAt: { gt: admin.reportsSeenAt } }),
+    };
+    const groups = await this.prisma.report.groupBy({
+      by: ['postId', 'commentId'],
+      where,
+    });
+    return { count: groups.length };
+  }
+
+  async markSeen(adminId: number) {
+    await this.prisma.user.update({
+      where: { id: adminId },
+      data: { reportsSeenAt: new Date() },
+    });
+    return { ok: true };
   }
 
   async dismiss(reportId: number) {
@@ -174,6 +287,21 @@ export class ReportsService {
       where: { id: reportId },
       data: { status: ReportStatus.DISMISSED, resolvedAt: new Date() },
     });
+    return null;
+  }
+
+  async dismissByTarget(type: 'post' | 'comment', targetId: number) {
+    if (type === 'post') {
+      await this.prisma.report.updateMany({
+        where: { postId: targetId, status: ReportStatus.PENDING },
+        data: { status: ReportStatus.DISMISSED, resolvedAt: new Date() },
+      });
+    } else {
+      await this.prisma.report.updateMany({
+        where: { commentId: targetId, status: ReportStatus.PENDING },
+        data: { status: ReportStatus.DISMISSED, resolvedAt: new Date() },
+      });
+    }
     return null;
   }
 

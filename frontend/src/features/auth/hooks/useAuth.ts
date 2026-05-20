@@ -2,7 +2,7 @@ import { useMutation } from '@tanstack/react-query'
 import { useAppDispatch } from '@shared/hooks'
 import { loginRequest, registerRequest } from '../api'
 import { setToken } from '../model/authSlice'
-import type { Auth } from '../model/Auth'
+import type { LoginData, RegisterData } from '../model/Auth'
 import { setUser } from '@entities/user/model/userSlice'
 
 const persistAuth = (data: { token: string; user: unknown }) => {
@@ -14,7 +14,7 @@ export const useLogin = () => {
   const dispatch = useAppDispatch()
 
   return useMutation({
-    mutationFn: (auth: Auth) => loginRequest(auth),
+    mutationFn: (data: LoginData) => loginRequest(data),
     onSuccess: data => {
       persistAuth(data)
       dispatch(setToken(data.token))
@@ -27,7 +27,7 @@ export const useRegister = () => {
   const dispatch = useAppDispatch()
 
   return useMutation({
-    mutationFn: (auth: Auth) => registerRequest(auth),
+    mutationFn: (data: RegisterData) => registerRequest(data),
     onSuccess: data => {
       persistAuth(data)
       dispatch(setToken(data.token))

@@ -8,6 +8,7 @@ export const routePatterns = {
   post: '/post/:id',
   adminReports: '/admin/reports',
   adminStats: '/admin/stats',
+  adminUsers: '/admin/users',
 } as const
 
 export const routes = {
@@ -18,6 +19,7 @@ export const routes = {
   notifications: '/notifications',
   adminReports: '/admin/reports',
   adminStats: '/admin/stats',
+  adminUsers: '/admin/users',
   profile: (id: number | string) => `/profile/${id}`,
   post: (id: number | string) => `/post/${id}`,
   chatWith: (peerId: number | string) => `/chat?peer=${peerId}`,

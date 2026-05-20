@@ -54,11 +54,11 @@ export class AuthService {
 
   async login(loginDto: LoginDto) {
     const user = await this.prisma.user.findUnique({
-      where: { tag: loginDto.tag },
+      where: { email: loginDto.email },
     });
 
     if (!user) {
-      throw new UnauthorizedException('Неверный логин или пароль');
+      throw new UnauthorizedException('Неверный email или пароль');
     }
 
     const isPasswordValid = (await bcrypt.compare(
@@ -67,7 +67,7 @@ export class AuthService {
     )) as boolean;
 
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Неверный логин или пароль');
+      throw new UnauthorizedException('Неверный email или пароль');
     }
 
     const profile = await this.loadProfile(user.id);
@@ -81,13 +81,19 @@ export class AuthService {
 
   async register(data: CreateUserDto) {
     const tag = data.tag.trim();
+    const email = data.email.trim().toLowerCase();
 
-    const existing = await this.prisma.user.findUnique({
-      where: { tag },
-    });
+    const [existingTag, existingEmail] = await Promise.all([
+      this.prisma.user.findUnique({ where: { tag } }),
+      this.prisma.user.findUnique({ where: { email } }),
+    ]);
 
-    if (existing) {
+    if (existingTag) {
       throw new ConflictException('Такой логин уже занят');
+    }
+
+    if (existingEmail) {
+      throw new ConflictException('Этот email уже используется');
     }
 
     const salt = await bcrypt.genSalt();
@@ -99,6 +105,7 @@ export class AuthService {
       data: {
         username,
         tag,
+        email,
         role: Role.USER,
         passwordHash,
         avatar: data.avatar?.trim() || 'default.jpg',

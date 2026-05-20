@@ -15,6 +15,7 @@ export class SearchService {
     currentUserId: number,
     cursor?: number,
     limit = 20,
+    callerRole: 'USER' | 'ADMIN' = 'USER',
   ) {
     const term = query.trim();
     if (!term) {
@@ -23,15 +24,15 @@ export class SearchService {
     const take = Math.min(Math.max(limit, 1), 50);
 
     if (type === 'users') {
-      return this.searchUsers(term, cursor, take);
+      return this.searchUsers(term, cursor, take, callerRole);
     }
     return this.searchPosts(term, currentUserId, cursor, take);
   }
 
-  private async searchUsers(term: string, cursor: number | undefined, take: number) {
+  private async searchUsers(term: string, cursor: number | undefined, take: number, callerRole: 'USER' | 'ADMIN') {
     const users = await this.prisma.user.findMany({
       where: {
-        role: Role.USER,
+        ...(callerRole !== 'ADMIN' && { role: Role.USER }),
         OR: [
           { username: { contains: term, mode: 'insensitive' } },
           { tag: { contains: term, mode: 'insensitive' } },

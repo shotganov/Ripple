@@ -16,25 +16,29 @@ export class StatsService {
       this.prisma.follow.count(),
     ]);
 
-    const postsByDay = await this.getPostsByDay(30);
+    const days = 30;
+    const [postsByDay, commentsByDay, likesByDay, usersByDay] = await Promise.all([
+      this.getByDay('posts', days),
+      this.getByDay('comments', days),
+      this.getByDay('likes', days),
+      this.getByDay('users', days),
+    ]);
 
-    return { users, posts, comments, likes, follows, postsByDay };
+    return { users, posts, comments, likes, follows, postsByDay, commentsByDay, likesByDay, usersByDay };
   }
 
-  private async getPostsByDay(days: number): Promise<DailyPoint[]> {
+  private async getByDay(table: 'posts' | 'comments' | 'likes' | 'users', days: number): Promise<DailyPoint[]> {
     const since = new Date();
     since.setUTCHours(0, 0, 0, 0);
     since.setUTCDate(since.getUTCDate() - (days - 1));
 
-    const rows = await this.prisma.$queryRaw<
-      { day: Date; count: bigint }[]
-    >`
+    const rows = await this.prisma.$queryRawUnsafe<{ day: Date; count: bigint }[]>(`
       SELECT date_trunc('day', created_at) AS day, COUNT(*) AS count
-      FROM posts
-      WHERE created_at >= ${since}
+      FROM ${table}
+      WHERE created_at >= $1
       GROUP BY day
       ORDER BY day ASC
-    `;
+    `, since);
 
     const map = new Map<string, number>();
     for (const r of rows) {

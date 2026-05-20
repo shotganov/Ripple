@@ -1,9 +1,10 @@
 import { Box, ButtonBase } from '@mui/material'
 import type { Theme } from '@mui/material'
 import type { SystemStyleObject } from '@mui/system'
-import ProfileCoverImage from '@shared/assets/images/profile-background.jpg'
-import SocialIcon from '@shared/assets/icons/icon-social.svg'
+import { useState } from 'react'
 import MessageIcon from '@shared/assets/icons/icon-message.svg?react'
+import TrashIcon from '@shared/assets/icons/icon-trash.svg?react'
+import ProfileIcon from '@shared/assets/icons/icon-profile.svg?react'
 import { colors, transitions } from '@shared/styles'
 import { resolveAssetUrl } from '@shared/config'
 import { plural } from '@shared/lib'
@@ -11,17 +12,23 @@ import { useFollowStatus, useToggleFollow } from '@features/follows'
 import { useNavigate } from 'react-router-dom'
 import { routes } from '@shared/config/routes'
 import type { User } from '@shared/model'
+import { useSetUserRole, useDeleteAdminUser } from '@features/reports'
+import { DropdownMenu, DropdownMenuItem } from '@shared/ui'
 
 type Props = {
   user: User
   isOwnProfile: boolean
+  isAdmin?: boolean
   onEditClick: () => void
 }
 
-export const Profile = ({ user, isOwnProfile, onEditClick }: Props) => {
+export const Profile = ({ user, isOwnProfile, isAdmin, onEditClick }: Props) => {
   const followStatus = useFollowStatus(user.id, !isOwnProfile)
   const toggleFollow = useToggleFollow(user.id)
   const navigate = useNavigate()
+  const setRole = useSetUserRole()
+  const deleteUser = useDeleteAdminUser()
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   const isFollowing = followStatus.data?.isFollowing ?? false
   const followLabel = isFollowing ? 'Отписаться' : 'Подписаться'
@@ -41,20 +48,14 @@ export const Profile = ({ user, isOwnProfile, onEditClick }: Props) => {
       <Box
         sx={{
           ...coverSx,
-          backgroundImage: `url(${
-            user.coverImage ? resolveAssetUrl(user.coverImage) : ProfileCoverImage
-          })`,
+          ...(user.coverImage && { backgroundImage: `url(${resolveAssetUrl(user.coverImage)})` }),
         }}
       />
 
       <Box sx={cardSx}>
-        <Box
-          component="img"
-          src={user.avatar ? resolveAssetUrl(user.avatar) : SocialIcon}
-          sx={avatarSx}
-        />
+        <Box component="img" src={resolveAssetUrl(user.avatar)} sx={avatarSx} />
 
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, flexWrap: 'wrap' }}>
           {isOwnProfile ? (
             <ButtonBase
               onClick={onEditClick}
@@ -68,19 +69,63 @@ export const Profile = ({ user, isOwnProfile, onEditClick }: Props) => {
             </ButtonBase>
           ) : (
             <>
-              <ButtonBase
-                sx={messageButtonSx}
-                onClick={() => navigate(routes.chatWith(user.id))}
-              >
-                <Box component={MessageIcon} sx={{ width: 20, height: 20 }} />
-              </ButtonBase>
-              <ButtonBase
-                onClick={handleToggleFollow}
-                disabled={toggleFollow.isPending || followStatus.isLoading}
-                sx={isFollowing ? actionButtonSx : primaryActionButtonSx}
-              >
-                {followLabel}
-              </ButtonBase>
+              {isAdmin && !isOwnProfile && (
+                <DropdownMenu triggerSx={menuTriggerSx} slotSx={{ width: 36, height: 36 }}>
+                  {close => (
+                    <>
+                      <DropdownMenuItem
+                        icon={ProfileIcon}
+                        onClick={() => {
+                          setRole.mutate({
+                            id: user.id,
+                            role: user.role === 'ADMIN' ? 'USER' : 'ADMIN',
+                          })
+                          close()
+                        }}
+                      >
+                        {user.role === 'ADMIN' ? 'Разжаловать' : 'Сделать админом'}
+                      </DropdownMenuItem>
+                      {confirmDelete ? (
+                        <DropdownMenuItem
+                          icon={TrashIcon}
+                          danger
+                          onClick={() =>
+                            deleteUser.mutate(user.id, { onSuccess: () => navigate(routes.feed) })
+                          }
+                        >
+                          Подтвердить удаление
+                        </DropdownMenuItem>
+                      ) : (
+                        <DropdownMenuItem
+                          icon={TrashIcon}
+                          danger
+                          onClick={() => setConfirmDelete(true)}
+                        >
+                          Удалить аккаунт
+                        </DropdownMenuItem>
+                      )}
+                    </>
+                  )}
+                </DropdownMenu>
+              )}
+
+              {!isAdmin && (
+                <>
+                  <ButtonBase
+                    sx={messageButtonSx}
+                    onClick={() => navigate(routes.chatWith(user.id))}
+                  >
+                    <Box component={MessageIcon} sx={{ width: 20, height: 20 }} />
+                  </ButtonBase>
+                  <ButtonBase
+                    onClick={handleToggleFollow}
+                    disabled={toggleFollow.isPending || followStatus.isLoading}
+                    sx={isFollowing ? actionButtonSx : primaryActionButtonSx}
+                  >
+                    {followLabel}
+                  </ButtonBase>
+                </>
+              )}
             </>
           )}
         </Box>
@@ -126,6 +171,7 @@ export const Profile = ({ user, isOwnProfile, onEditClick }: Props) => {
 const coverSx: SystemStyleObject<Theme> = {
   width: '100%',
   height: 200,
+  backgroundColor: colors.skyMist,
   backgroundSize: 'cover',
   backgroundPosition: 'center',
   backgroundRepeat: 'no-repeat',
@@ -173,12 +219,26 @@ const actionButtonSx: SystemStyleObject<Theme> = {
   height: 36,
   px: 2,
   fontSize: 15,
-  fontWeight: 700,
-  border: `1px solid ${colors.textSoft}`,
+  fontWeight: 500,
+  border: `1px solid ${colors.inputBorder}`,
   backgroundColor: colors.surface,
   borderRadius: 4,
-  color: colors.textSoft,
+  color: colors.black,
   transition: transitions.background,
+  '&:hover': {
+    backgroundColor: colors.inputBg,
+  },
+}
+
+const menuTriggerSx: SystemStyleObject<Theme> = {
+  position: 'static',
+  transform: 'none',
+  width: 36,
+  height: 36,
+  borderRadius: '50%',
+  border: `1px solid ${colors.inputBorder}`,
+  backgroundColor: colors.surface,
+  color: colors.black,
   '&:hover': {
     backgroundColor: colors.inputBg,
   },
@@ -188,13 +248,13 @@ const primaryActionButtonSx: SystemStyleObject<Theme> = {
   height: 36,
   px: 2,
   fontSize: 14,
-  fontWeight: 600,
+  fontWeight: 500,
   border: `1px solid ${colors.accent}`,
   backgroundColor: colors.accent,
   borderRadius: 4,
   color: colors.surface,
-  transition: transitions.background,
+  transition: transitions.backgroundAndOpacity,
   '&:hover': {
-    backgroundColor: colors.accentHover,
+    opacity: 0.9,
   },
 }

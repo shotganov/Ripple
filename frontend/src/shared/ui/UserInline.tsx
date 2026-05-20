@@ -2,34 +2,51 @@ import { Box } from '@mui/material'
 import { colors } from '@shared/styles'
 import { UnstyledLink } from './UnstyledLink'
 
+import type { MouseEvent } from 'react'
+
 type Props = {
   to: string
   username: string
   tag: string
+  onClick?: (e: MouseEvent) => void
 }
 
-export const UserInline = ({ to, username, tag }: Props) => (
+export const UserInline = ({ to, username, tag, onClick }: Props) => (
   <UnstyledLink
     to={to}
+    onClick={onClick}
     sx={{
-      gap: 1,
+      gap: 0.5,
       fontSize: 15,
-      lineHeight: 1.2,
       alignSelf: 'flex-start',
-      width: 'fit-content',
+      minWidth: 0,
+      overflow: 'hidden',
     }}
   >
     <Box
       sx={{
         fontWeight: 500,
         display: 'inline-block',
-        lineHeight: 0.8,
-        borderBottom: '1px solid transparent',
-        '&:hover': { borderBottomColor: 'currentColor' },
+
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        whiteSpace: 'nowrap',
+        maxWidth: '100%',
+        textDecoration: 'none',
+        '&:hover': { textDecoration: 'underline' },
       }}
     >
       {username}
     </Box>
-    <Box sx={{ color: colors.textMuted }}>@{tag}</Box>
+    <Box
+      sx={{
+        color: colors.textMuted,
+        whiteSpace: 'nowrap',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+      }}
+    >
+      @{tag}
+    </Box>
   </UnstyledLink>
 )

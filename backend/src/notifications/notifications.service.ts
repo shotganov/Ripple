@@ -54,12 +54,10 @@ const formatNotification = (n: NotificationWithRelations) => ({
     ? {
         id: n.post.id,
         content: n.post.content,
-        images: n.post.images.map(postImageUrl),
+        images: n.post.images.map((image) => postImageUrl(image)),
       }
     : null,
-  comment: n.comment
-    ? { id: n.comment.id, content: n.comment.content }
-    : null,
+  comment: n.comment ? { id: n.comment.id, content: n.comment.content } : null,
 });
 
 @Injectable()
@@ -135,8 +133,7 @@ export class NotificationsService {
     });
 
     const items = rows.map(formatNotification);
-    const nextCursor =
-      rows.length === take ? rows[rows.length - 1].id : null;
+    const nextCursor = rows.length === take ? rows[rows.length - 1].id : null;
 
     return { items, nextCursor };
   }

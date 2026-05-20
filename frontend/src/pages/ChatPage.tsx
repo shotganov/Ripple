@@ -5,7 +5,6 @@ import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { ChatDialog, ChatList, EmptyDialog, useChatWithPeer, useChats } from '@features/chats'
 import { useGetUser } from '@features/profile'
-import type { ChatCompanion } from '@entities/chat'
 import { selectUser } from '@entities/user'
 import { useAppSelector } from '@shared/hooks'
 import { useDebouncedValue } from '@shared/lib'
@@ -43,15 +42,7 @@ export const ChatPage = () => {
   const chats = chatsQuery.data?.pages.flatMap(p => p.items) ?? []
   const selectedChat = chatId ? (chats.find(c => c.id === chatId) ?? null) : null
 
-  const draftCompanion: ChatCompanion | null =
-    peerId && !chatId && draftPeerQuery.data
-      ? {
-          id: draftPeerQuery.data.id,
-          username: draftPeerQuery.data.username,
-          tag: draftPeerQuery.data.tag,
-          avatar: draftPeerQuery.data.avatar ?? null,
-        }
-      : null
+  const draftCompanion = (peerId && !chatId ? draftPeerQuery.data : null) ?? null
 
   const handleSelectChat = (id: number) => {
     setParams({ id: String(id) }, { replace: true })
@@ -106,7 +97,7 @@ const rootSx = (hasOpenDialog: boolean) =>
     width: '100%',
     [breakpoints.mobile]: {
       py: 0,
-      height: hasOpenDialog ? '100vh' : 'calc(100vh - 72px)',
+      height: hasOpenDialog ? '100vh' : 'calc(100dvh - 72px)',
     },
   }) as const
 

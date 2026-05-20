@@ -5,8 +5,11 @@ import {
   WebSocketGateway,
   WebSocketServer,
 } from '@nestjs/websockets';
+import { InjectMetric } from '@willsoto/nestjs-prometheus';
 import { JwtService } from '@nestjs/jwt';
+import { Gauge } from 'prom-client';
 import { Server, Socket } from 'socket.io';
+import { METRIC_WS_CONNECTIONS } from '../metrics/metrics.module';
 
 const corsOrigins = [
   'http://127.0.0.1:5501',
@@ -31,7 +34,10 @@ export class MessagesGateway
 
   private readonly logger = new Logger(MessagesGateway.name);
 
-  constructor(private jwt: JwtService) {}
+  constructor(
+    private jwt: JwtService,
+    @InjectMetric(METRIC_WS_CONNECTIONS) private wsConnections: Gauge<string>,
+  ) {}
 
   handleConnection(socket: Socket) {
     const token =
@@ -47,6 +53,7 @@ export class MessagesGateway
       const payload = this.jwt.verify<{ userId: number }>(token);
       socket.data.userId = payload.userId;
       socket.join(`user:${payload.userId}`);
+      this.wsConnections.inc();
       this.logger.log(`socket ${socket.id} connected as user ${payload.userId}`);
     } catch {
       socket.disconnect(true);
@@ -55,6 +62,7 @@ export class MessagesGateway
 
   handleDisconnect(socket: Socket) {
     if (socket.data?.userId) {
+      this.wsConnections.dec();
       this.logger.log(`socket ${socket.id} disconnected`);
     }
   }

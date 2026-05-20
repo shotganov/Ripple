@@ -1,10 +1,11 @@
-import { useMemo, useState, type ReactNode } from 'react'
+﻿import { useMemo, useState, type ReactNode } from 'react'
 import { Box } from '@mui/material'
 import type { Theme } from '@mui/material'
 import type { SystemStyleObject } from '@mui/system'
 import { Avatar, ImagePreviewModal, UnstyledLink, UserInline } from '@shared/ui'
 import { colors } from '@shared/styles'
 import { resolveAssetUrl } from '@shared/config'
+import { formatRelativeTime } from '@shared/lib'
 import type { Post } from '../model/types'
 import { PostImages } from './PostImages'
 import { routes } from '@shared/config/routes'
@@ -16,67 +17,82 @@ type PostComponentProps = {
 }
 
 export const PostComponent = ({ post, actions, menu }: PostComponentProps) => {
-    const [previewIndex, setPreviewIndex] = useState<number | null>(null)
-    const images = useMemo(() => post.images.map(resolveAssetUrl), [post.images])
+  const [previewIndex, setPreviewIndex] = useState<number | null>(null)
+  const images = useMemo(() => post.images.map(resolveAssetUrl), [post.images])
 
-    return (
-      <Box
-        sx={{
-          display: 'flex',
-          alignItems: 'flex-start',
-          gap: 1.5,
-          p: 1.5,
-          pb: 1,
-          backgroundColor: colors.surface,
-          borderBottom: `1px solid ${colors.border}`,
-        }}
-      >
-        <UnstyledLink to={routes.profile(post.user.id)}>
-          <Avatar src={post.user.avatar} size={48} />
-        </UnstyledLink>
+  return (
+    <Box
+      sx={{
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: 1.5,
+        p: 1.5,
+        pb: 1,
+        backgroundColor: colors.surface,
+        borderBottom: `1px solid ${colors.border}`,
+      }}
+    >
+      <UnstyledLink to={routes.profile(post.user.id)}>
+        <Avatar src={post.user.avatar} size={48} />
+      </UnstyledLink>
 
-        <Box sx={postBodySx}>
-          <Box
-            sx={{
-              display: 'flex',
-              alignItems: 'flex-start',
-              justifyContent: 'space-between',
-              gap: 1,
-            }}
-          >
+      <Box sx={postBodySx}>
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 1,
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>
             <UserInline
               to={routes.profile(post.user.id)}
               username={post.user.username}
               tag={post.user.tag}
             />
-            {menu}
+            <Box
+              component="span"
+              sx={{ fontSize: 14, color: colors.textMuted, flexShrink: 0, px: 0.5 }}
+            >
+              ·
+            </Box>
+            <Box
+              component="span"
+              sx={{ fontSize: 14, color: colors.textMuted, flexShrink: 0, mr: 1.5 }}
+            >
+              {formatRelativeTime(post.createdAt)}
+            </Box>
           </Box>
-
-          <Box
-            sx={{
-              fontSize: 15,
-              lineHeight: 1.3,
-              wordBreak: 'break-word',
-            }}
-          >
-            {post.content}
-          </Box>
-
-          {images.length > 0 && <PostImages images={images} onImageClick={setPreviewIndex} />}
-
-          {actions}
+          {menu}
         </Box>
 
-        {previewIndex !== null && (
-          <ImagePreviewModal
-            images={images}
-            index={previewIndex}
-            setIndex={setPreviewIndex}
-            onClose={() => setPreviewIndex(null)}
-          />
-        )}
+        <Box
+          sx={{
+            fontSize: 15,
+            lineHeight: 1.3,
+            wordBreak: 'break-word',
+            whiteSpace: 'pre-wrap',
+          }}
+        >
+          {post.content}
+        </Box>
+
+        {images.length > 0 && <PostImages images={images} onImageClick={setPreviewIndex} />}
+
+        {actions}
       </Box>
-    )
+
+      {previewIndex !== null && (
+        <ImagePreviewModal
+          images={images}
+          index={previewIndex}
+          setIndex={setPreviewIndex}
+          onClose={() => setPreviewIndex(null)}
+        />
+      )}
+    </Box>
+  )
 }
 
 const postBodySx: SystemStyleObject<Theme> = {

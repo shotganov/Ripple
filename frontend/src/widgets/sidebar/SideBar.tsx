@@ -10,6 +10,7 @@ import { selectUser } from '@entities/user'
 import { CreatePostModal } from '@features/posts'
 import { useUnreadCount } from '@features/notifications'
 import { useMessagesUnreadCount } from '@features/chats'
+import { usePendingReportsCount } from '@features/reports'
 import { alphaColors, breakpoints, colors, transitions, zIndex } from '@shared/styles'
 import SocialIcon from '@shared/assets/icons/icon-social.svg?react'
 import { SideBarNav } from './SideBarNav'
@@ -28,10 +29,12 @@ export const SideBar = ({ isChatsPage }: Props) => {
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false)
   const unreadCountQuery = useUnreadCount(!!user && user.role !== 'ADMIN')
   const messagesUnreadQuery = useMessagesUnreadCount(!!user && user.role !== 'ADMIN')
+  const pendingReportsQuery = usePendingReportsCount(!!user && user.role === 'ADMIN')
   if (!user) return null
   const isAdmin = user?.role === 'ADMIN'
   const notificationsCount = unreadCountQuery.data?.count ?? 0
   const messagesCount = messagesUnreadQuery.data?.count ?? 0
+  const reportsCount = pendingReportsQuery.data?.count ?? 0
 
   const handleLogout = () => {
     localStorage.removeItem('token')
@@ -60,16 +63,14 @@ export const SideBar = ({ isChatsPage }: Props) => {
       >
         <Box sx={topSectionSx}>
           <Box sx={logoSx}>
-            <SocialIcon width={25} height={25} />
-            {/* <Box component="span" sx={sxAdaptive}>
-              <Title text="Social" fontSize={22} />
-            </Box> */}
+            <SocialIcon width={40} height={40} />
           </Box>
 
           <SideBarNav
             userId={user.id}
             notificationsCount={notificationsCount}
             messagesCount={messagesCount}
+            reportsCount={reportsCount}
           />
 
           {!isAdmin && (
@@ -176,8 +177,7 @@ const logoSx: SystemStyleObject<Theme> = {
   display: 'flex',
   justifyContent: 'flex-start',
   alignItems: 'center',
-  px: 1.7,
-  pb: 1,
+  px: 0.7,
   [breakpoints.compactSidebar]: {
     px: 0,
     pb: 0,
@@ -209,9 +209,9 @@ const createPostButtonSx: SystemStyleObject<Theme> = {
     opacity: 0.9,
   },
   [breakpoints.compactSidebar]: {
-    width: 48,
-    height: 48,
-    minHeight: 48,
+    width: 44,
+    height: 44,
+    minHeight: 44,
     mx: 0,
     mt: 0.5,
     px: 0,

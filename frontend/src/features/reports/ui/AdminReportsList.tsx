@@ -2,6 +2,7 @@ import { Box, CircularProgress } from '@mui/material'
 import { useEffect, useRef } from 'react'
 import { EmptyState } from '@shared/ui'
 import { useReports } from '../hooks/useReports'
+import { useMarkReportsSeen } from '../hooks/usePendingReportsCount'
 import { AdminReportRow } from './AdminReportRow'
 import type { ReportStatus } from '../model/types'
 
@@ -16,6 +17,12 @@ export const AdminReportsList = ({ filter, emptyTitle, emptyHint, readonly }: Pr
   const reports = useReports(filter)
   const items = reports.data?.pages.flatMap(p => p.items) ?? []
   const sentinelRef = useRef<HTMLDivElement | null>(null)
+  const markSeen = useMarkReportsSeen()
+
+  useEffect(() => {
+    markSeen.mutate()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     const el = sentinelRef.current
@@ -40,10 +47,10 @@ export const AdminReportsList = ({ filter, emptyTitle, emptyHint, readonly }: Pr
         </Box>
       )}
       {reports.data && items.length === 0 && <EmptyState title={emptyTitle} hint={emptyHint} />}
-      {items.map((r, i) => (
+      {items.map((g, i) => (
         <AdminReportRow
-          key={r.id}
-          report={r}
+          key={`${g.type}-${g.targetId}`}
+          group={g}
           readonly={readonly}
           isLast={i === items.length - 1 && !reports.hasNextPage}
         />

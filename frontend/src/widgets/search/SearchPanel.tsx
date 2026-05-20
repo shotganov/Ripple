@@ -81,7 +81,7 @@ export const SearchPanel = ({ isSearchPage }: Props) => {
                   {queryUsers.data?.pages
                     .flatMap(p => p.items)
                     .slice(0, 5)
-                    .map(user => <UserCard key={user.id} user={user} px={1} />)}
+                    .map(user => <UserCard key={user.id} user={user} px={1} maxTextWidth={155} />)}
                 </Stack>
               </Paper>
             )}

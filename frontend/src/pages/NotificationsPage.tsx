@@ -29,7 +29,8 @@ export const NotificationsPage = () => {
 
   useEffect(() => {
     markAllRead.mutate()
-  }, [markAllRead])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     const el = sentinelRef.current
@@ -41,7 +42,7 @@ export const NotificationsPage = () => {
           fetchNextPageRef.current()
         }
       },
-      { rootMargin: '300px 0px' },
+      { rootMargin: '200px 0px' },
     )
     obs.observe(el)
     return () => obs.disconnect()

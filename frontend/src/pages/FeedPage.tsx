@@ -4,6 +4,11 @@ import { CreatePost, useAllPosts, useFeedPosts } from '@features/posts'
 import { PostsList } from '@widgets/posts'
 import { FeedHeader, type FeedMode } from '@widgets/feed'
 import { PostSkeletonList } from '@entities/post'
+import { useAppSelector } from '@shared/hooks'
+import { selectUser } from '@entities/user'
+import { colors } from '@shared/styles'
+import type { SystemStyleObject, Theme } from '@mui/system'
+import { StickyTopBar } from '@shared/ui'
 
 const feedTabs = [
   { label: 'Обзор', value: 'forYou' as const },
@@ -11,6 +16,7 @@ const feedTabs = [
 ]
 
 export const FeedPage = () => {
+  const currentUser = useAppSelector(selectUser)
   const [feedMode, setFeedMode] = useState<FeedMode>('forYou')
   const allPosts = useAllPosts()
   const feedPosts = useFeedPosts()
@@ -20,8 +26,16 @@ export const FeedPage = () => {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-      <FeedHeader tabs={feedTabs} activeMode={feedMode} onModeChange={setFeedMode} />
-      <CreatePost />
+      {currentUser?.role !== 'ADMIN' ? (
+        <>
+          <FeedHeader tabs={feedTabs} activeMode={feedMode} onModeChange={setFeedMode} />
+          <CreatePost />
+        </>
+      ) : (
+        <StickyTopBar>
+          <Box sx={tabLabelSx}>Лента</Box>
+        </StickyTopBar>
+      )}
       {active.isLoading && <PostSkeletonList />}
       {active.data && (
         <PostsList
@@ -35,4 +49,16 @@ export const FeedPage = () => {
       <Box sx={{ flex: 1, minHeight: '50vh' }} />
     </Box>
   )
+}
+
+const tabLabelSx: SystemStyleObject<Theme> = {
+  width: '100%',
+  height: 50,
+  fontSize: 17,
+  fontWeight: 500,
+  position: 'relative',
+  display: 'flex',
+  justifyContent: 'center',
+  alignItems: 'center',
+  borderBottom: `1px solid ${colors.border}`,
 }

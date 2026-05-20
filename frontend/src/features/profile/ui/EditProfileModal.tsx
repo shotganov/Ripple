@@ -1,7 +1,5 @@
 import { Box, Paper, InputBase, TextareaAutosize } from '@mui/material'
-import { useEffect, useRef, useState } from 'react'
-import ProfileCoverImage from '@shared/assets/images/profile-background.jpg'
-import SocialIcon from '@shared/assets/icons/icon-social.svg?react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import CameraIcon from '@shared/assets/icons/icon-camera-new.svg'
 import { useAppDispatch, useAppSelector } from '@shared/hooks'
 import { selectUser, setUser } from '@entities/user'
@@ -17,7 +15,7 @@ type Props = {
   onClose: () => void
 }
 
-type InputFocused = 'username' | 'bio'
+type InputFocused = 'username' | 'bio' | 'tag'
 const avatarSize = 114
 
 export const EditProfileModal = ({ onClose }: Props) => {
@@ -65,6 +63,12 @@ export const EditProfileModal = ({ onClose }: Props) => {
     setErrors(validateProfile(next))
   }
 
+  const handleTagChange = (value: string) => {
+    const next = { ...userData, tag: value }
+    setUserData(next)
+    setErrors(validateProfile(next))
+  }
+
   const handleBioChange = (value: string) => {
     const next = { ...userData, bio: value }
     setUserData(next)
@@ -76,6 +80,7 @@ export const EditProfileModal = ({ onClose }: Props) => {
 
     const payload: UpdateProfilePayload = {}
     if (userData.username !== currentUser.username) payload.username = userData.username
+    if (userData.tag !== currentUser.tag) payload.tag = userData.tag
     if ((userData.bio ?? '') !== (currentUser.bio ?? '')) payload.bio = userData.bio ?? ''
     if (avatarFile) payload.avatarFile = avatarFile
     if (coverFile) payload.coverFile = coverFile
@@ -103,16 +108,29 @@ export const EditProfileModal = ({ onClose }: Props) => {
   if (!user) return null
 
   return (
-    <Modal onClose={onClose}>
+    <Modal
+      onClose={onClose}
+      placement="top"
+      sx={{
+        pt: 5.7,
+      }}
+    >
       <ModalContent
         width={600}
         maxWidth="calc(100vw - 32px)"
+        maxHeight="calc(100vh - 32px)"
         sx={{
-          transform: 'translateY(-100px)',
+          overflowY: 'auto',
           border: 'none',
           p: 2,
-          py: 3,
-          gap: 3,
+          py: 2,
+          gap: 1.5,
+          [breakpoints.mobile]: {
+            maxWidth: '100vw',
+            width: '100vw',
+            maxHeight: '95vh',
+            borderRadius: `${radius.lg} ${radius.lg} 0 0`,
+          },
         }}
       >
         <Box
@@ -152,7 +170,10 @@ export const EditProfileModal = ({ onClose }: Props) => {
           sx={{
             position: 'relative',
             height: '200px',
-            backgroundImage: `url(${userData.coverImage ? resolveAssetUrl(userData.coverImage) : ProfileCoverImage})`,
+            backgroundColor: colors.skyMist,
+            ...(userData.coverImage && {
+              backgroundImage: `url(${resolveAssetUrl(userData.coverImage)})`,
+            }),
             backgroundSize: 'cover',
             backgroundPosition: 'center',
             backgroundRepeat: 'no-repeat',
@@ -188,7 +209,7 @@ export const EditProfileModal = ({ onClose }: Props) => {
               overflow: 'hidden',
             }}
           >
-            {userData.avatar ? (
+            {userData.avatar && (
               <Box
                 component="img"
                 src={resolveAssetUrl(userData.avatar)}
@@ -200,8 +221,6 @@ export const EditProfileModal = ({ onClose }: Props) => {
                   objectFit: 'cover',
                 }}
               />
-            ) : (
-              <SocialIcon width={avatarSize} height={avatarSize} />
             )}
 
             <Box component="label" htmlFor="profile-icon-upload" sx={cameraOverlaySx}>
@@ -240,15 +259,36 @@ export const EditProfileModal = ({ onClose }: Props) => {
             <InputBase
               value={userData.username}
               onChange={e => handleUsernameChange(e.target.value)}
-              sx={{
-                width: '100%',
-                fontSize: 15,
-              }}
+              sx={inputBaseSx}
               onFocus={() => setInputFocused('username')}
               onBlur={() => setInputFocused(null)}
             />
           </Paper>
           {errors.username && <Box sx={errorTextSx}>{errors.username}</Box>}
+        </Box>
+
+        <Box>
+          <Paper
+            elevation={0}
+            sx={{
+              ...fieldPaperSx,
+              border: () => {
+                if (errors.tag) return '1px solid red'
+                else if (inputFocused === 'tag') return `1px solid ${colors.inputBorder}`
+                return `1px solid ${colors.border}`
+              },
+            }}
+          >
+            <Box sx={{ fontSize: 12 }}>Тег</Box>
+            <InputBase
+              value={userData.tag}
+              onChange={e => handleTagChange(e.target.value)}
+              sx={inputBaseSx}
+              onFocus={() => setInputFocused('tag')}
+              onBlur={() => setInputFocused(null)}
+            />
+          </Paper>
+          {errors.tag && <Box sx={errorTextSx}>{errors.tag}</Box>}
         </Box>
 
         <Box>
@@ -274,13 +314,7 @@ export const EditProfileModal = ({ onClose }: Props) => {
               minRows={3}
               maxRows={3}
               style={{
-                fontSize: '15px',
-                width: '100%',
-                outline: 'none',
-                resize: 'none',
-                color: colors.text,
-                paddingTop: 4,
-                lineHeight: 1.5,
+                ...textAreaSx,
               }}
               value={userData.bio}
               onFocus={() => setInputFocused('bio')}
@@ -293,6 +327,22 @@ export const EditProfileModal = ({ onClose }: Props) => {
       </ModalContent>
     </Modal>
   )
+}
+
+const inputBaseSx = {
+  width: '100%',
+  fontSize: 15,
+  '& input': { padding: 0, paddingTop: '2px' },
+}
+
+const textAreaSx: CSSProperties = {
+  width: '100%',
+  fontSize: 15,
+  outline: 'none',
+  resize: 'none',
+  color: colors.text,
+  lineHeight: 1.5,
+  paddingTop: '2px',
 }
 
 const cameraOverlaySx = {
@@ -316,7 +366,7 @@ const cameraOverlaySx = {
 const fieldPaperSx = {
   display: 'flex',
   flexDirection: 'column',
-  py: 0.5,
+  p: 0.7,
   px: 1.75,
   borderRadius: radius.md,
   border: `1px solid ${colors.inputBorder}`,

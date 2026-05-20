@@ -3,7 +3,6 @@ import { colors } from '@shared/styles'
 import { Avatar } from '@shared/ui'
 import type { User } from '@shared/model'
 import { NavLink } from 'react-router-dom'
-import SocialIcon from '@shared/assets/icons/icon-social2.svg'
 import { routes } from '@shared/config/routes'
 
 type Props = {
@@ -11,10 +10,12 @@ type Props = {
   sizeAvatar?: number
   px?: number
   py?: number
+  pr?: number
   isBorder?: boolean
+  maxTextWidth?: number
 }
 
-export const UserCard = ({ user, px = 0, py = 1, isBorder = false, sizeAvatar = 40 }: Props) => {
+export const UserCard = ({ user, px = 0, py = 1, pr, isBorder = false, sizeAvatar = 40, maxTextWidth }: Props) => {
   return (
     <ButtonBase
       key={user.id}
@@ -24,6 +25,7 @@ export const UserCard = ({ user, px = 0, py = 1, isBorder = false, sizeAvatar = 
         width: '100%',
         py: py,
         px: px,
+        ...(pr !== undefined ? { pr } : {}),
         borderRadius: 0,
         display: 'flex',
         justifyContent: 'flex-start',
@@ -38,7 +40,7 @@ export const UserCard = ({ user, px = 0, py = 1, isBorder = false, sizeAvatar = 
         },
       }}
     >
-      <Avatar src={user.avatar ? user.avatar : SocialIcon} size={sizeAvatar} />
+      <Avatar src={user.avatar} size={sizeAvatar} />
 
       <Box
         sx={{
@@ -52,7 +54,8 @@ export const UserCard = ({ user, px = 0, py = 1, isBorder = false, sizeAvatar = 
       >
         <Box
           sx={{
-            maxWidth: 220,
+            width: '100%',
+            ...(maxTextWidth ? { maxWidth: maxTextWidth } : {}),
             fontSize: 15,
             fontWeight: 500,
             color: colors.text,
@@ -67,7 +70,8 @@ export const UserCard = ({ user, px = 0, py = 1, isBorder = false, sizeAvatar = 
 
         <Box
           sx={{
-            maxWidth: 220,
+            width: '100%',
+            ...(maxTextWidth ? { maxWidth: maxTextWidth } : {}),
             fontSize: 15,
             lineHeight: 1.35,
             color: colors.textMuted,

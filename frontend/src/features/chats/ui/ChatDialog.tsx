@@ -1,20 +1,23 @@
-import { Box, ButtonBase, InputBase, Paper } from '@mui/material'
+import { Box, ButtonBase, ClickAwayListener, IconButton, InputBase } from '@mui/material'
 import type { Theme } from '@mui/material'
 import type { SystemStyleObject } from '@mui/system'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import EmojiPicker, { type EmojiClickData } from 'emoji-picker-react'
 import BackIcon from '@shared/assets/icons/icon-back.svg?react'
 import SendIcon from '@shared/assets/icons/icon-send.svg?react'
+import EmojiIcon from '@shared/assets/icons/icon-emoji-gray.svg?react'
 import { MessageItem } from '@entities/message'
-import type { ChatCompanion } from '@entities/chat'
-import { breakpoints, colors, radius, transitions } from '@shared/styles'
-import { Avatar } from '@shared/ui'
+import type { User } from '@shared/model'
+import { breakpoints, colors, radius, transitions, zIndex } from '@shared/styles'
+import { Avatar, UnstyledLink } from '@shared/ui'
 import { resolveAssetUrl } from '@shared/config'
 import { useChatMessages, useMarkChatRead, useSendMessage } from '../hooks/useChats'
+import { routes } from '@shared/config/routes'
 
 type ChatDialogProps = {
   currentUserId: number
   chatId: number | null
-  companion: ChatCompanion
+  companion: User
   onBack: () => void
   onChatCreated: (chatId: number) => void
 }
@@ -27,13 +30,45 @@ export const ChatDialog = ({
   onChatCreated,
 }: ChatDialogProps) => {
   const [text, setText] = useState('')
+  const [emojiOpen, setEmojiOpen] = useState(false)
+  const [inputHeight, setInputHeight] = useState(0)
+  const inputWrapRef = useRef<HTMLDivElement | null>(null)
+  const prevInputHeightRef = useRef(0)
+
+  useEffect(() => {
+    const el = inputWrapRef.current
+    if (!el) return
+    const obs = new ResizeObserver(() => setInputHeight(el.offsetHeight))
+    obs.observe(el)
+    setInputHeight(el.offsetHeight)
+    return () => obs.disconnect()
+  }, [])
+
+  useLayoutEffect(() => {
+    const container = containerRef.current
+    const delta = inputHeight - prevInputHeightRef.current
+    prevInputHeightRef.current = inputHeight
+    if (!container || delta === 0) return
+    const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight
+    if (distanceFromBottom < 100 + Math.abs(delta)) {
+      container.scrollTop += delta
+    }
+  }, [inputHeight])
+
+  const handleEmojiClick = (data: EmojiClickData) => {
+    setText(prev => prev + data.emoji)
+  }
   const messagesQuery = useChatMessages(chatId ?? 0)
   const sendMessage = useSendMessage()
   const markRead = useMarkChatRead()
+  const markReadRef = useRef(markRead.mutate)
+  useEffect(() => {
+    markReadRef.current = markRead.mutate
+  })
 
   useEffect(() => {
-    if (chatId) markRead.mutate(chatId)
-  }, [chatId, markRead])
+    if (chatId) markReadRef.current(chatId)
+  }, [chatId])
 
   const lastIncomingId = (() => {
     if (!chatId) return null
@@ -52,8 +87,8 @@ export const ChatDialog = ({
 
   useEffect(() => {
     if (!chatId || lastIncomingId === null) return
-    markRead.mutate(chatId)
-  }, [chatId, lastIncomingId, markRead])
+    markReadRef.current(chatId)
+  }, [chatId, lastIncomingId])
 
   const messages = useMemo(
     () =>
@@ -111,6 +146,7 @@ export const ChatDialog = ({
     }
     const delta = container.scrollHeight - savedScrollHeightRef.current
     if (delta > 0) {
+      // eslint-disable-next-line react-hooks/immutability
       container.scrollTop += delta
     }
     savedScrollHeightRef.current = null
@@ -140,6 +176,7 @@ export const ChatDialog = ({
         if (el) {
           el.scrollIntoView({ block: 'start' })
         } else {
+          // eslint-disable-next-line react-hooks/immutability
           container.scrollTop = container.scrollHeight
         }
       } else {
@@ -180,12 +217,17 @@ export const ChatDialog = ({
           <Box component={BackIcon} sx={backIconSx} />
         </ButtonBase>
 
-        <Avatar src={resolveAssetUrl(companion.avatar)} size={48} />
+        <UnstyledLink
+          to={routes.profile(companion.id)}
+          sx={{ display: 'flex', flex: 1, alignItems: 'center', gap: 1.5, textDecoration: 'none' }}
+        >
+          <Avatar src={resolveAssetUrl(companion.avatar)} size={48} />
 
-        <Box sx={userInfoSx}>
-          <Box sx={userNameSx}>{companion.username}</Box>
-          <Box sx={{ fontSize: 13, color: colors.textMuted }}>@{companion.tag}</Box>
-        </Box>
+          <Box sx={userInfoSx}>
+            <Box sx={userNameSx}>{companion.username}</Box>
+            <Box sx={{ fontSize: 13, color: colors.textMuted }}>@{companion.tag}</Box>
+          </Box>
+        </UnstyledLink>
       </Box>
 
       <Box ref={containerRef} sx={messagesListSx}>
@@ -199,13 +241,51 @@ export const ChatDialog = ({
         </Box>
       </Box>
 
-      <Box sx={{ px: 1.5, py: 1 }}>
-        <Paper elevation={0} sx={messageInputWrapSx}>
+      <Box ref={inputWrapRef} sx={{ px: 1.5, py: 1, flexShrink: 0, position: 'relative' }}>
+        {emojiOpen && (
+          <ClickAwayListener onClickAway={() => setEmojiOpen(false)}>
+            <Box
+              sx={{
+                position: 'absolute',
+                bottom: '100%',
+                left: 12,
+                zIndex: zIndex.modal,
+                transform: 'scale(0.8)',
+                transformOrigin: 'bottom left',
+              }}
+            >
+              <EmojiPicker previewConfig={{ showPreview: false }} onEmojiClick={handleEmojiClick} />
+            </Box>
+          </ClickAwayListener>
+        )}
+
+        <Box sx={messageInputWrapSx}>
+          <IconButton
+            disableRipple
+            onClick={() => setEmojiOpen(prev => !prev)}
+            sx={{
+              p: 0,
+              width: 24,
+              height: 24,
+              borderRadius: 1,
+              color: colors.textSoft,
+              flexShrink: 0,
+              mt: '3px',
+              ml: '-2px',
+              opacity: 0.8,
+              '&:hover': { backgroundColor: colors.inputFocusBg },
+            }}
+          >
+            <EmojiIcon width={22} height={22} />
+          </IconButton>
+
           <InputBase
             value={text}
             onChange={e => setText(e.target.value)}
             placeholder="Написать сообщение..."
             sx={messageInputSx}
+            multiline
+            maxRows={6}
             onKeyDown={event => {
               if (event.key === 'Enter' && !event.shiftKey) {
                 event.preventDefault()
@@ -214,27 +294,27 @@ export const ChatDialog = ({
             }}
           />
 
-          {text.trim().length > 0 && (
-            <ButtonBase
-              type="button"
-              onClick={handleSend}
-              disabled={sendMessage.isPending}
-              sx={sendBtnSx}
-            >
-              <SendIcon width={20} height={20} />
-            </ButtonBase>
-          )}
-        </Paper>
+          <ButtonBase
+            type="button"
+            onClick={handleSend}
+            disabled={sendMessage.isPending || text.length === 0}
+            sx={{ ...sendBtnSx, '&.Mui-disabled': { opacity: 0.8 } }}
+          >
+            <SendIcon width={20} height={20} />
+          </ButtonBase>
+        </Box>
       </Box>
     </Box>
   )
 }
 
 const rootSx: SystemStyleObject<Theme> = {
+  position: 'relative',
   display: 'flex',
   flexDirection: 'column',
   width: '100%',
   height: '100%',
+  overflow: 'hidden',
   border: `1px solid ${colors.border}`,
   borderRadius: '0px 16px 16px 0px',
   [breakpoints.tablet]: {
@@ -305,28 +385,36 @@ const messagesListSx: SystemStyleObject<Theme> = {
   display: 'flex',
   flexDirection: 'column',
   overflowY: 'auto',
+  '&::-webkit-scrollbar': { width: 4 },
+  '&::-webkit-scrollbar-track': { background: 'transparent' },
+  '&::-webkit-scrollbar-thumb': { background: colors.border, borderRadius: radius.sm },
 }
 
 const messagesInnerSx: SystemStyleObject<Theme> = {
-  marginTop: 'auto',
   display: 'flex',
   flexDirection: 'column',
-  gap: 1,
+  gap: 0.5,
   px: 1.5,
-  pt: 2,
+  pt: 1,
+  pb: 0.5,
 }
 
 const messageInputSx: SystemStyleObject<Theme> = {
   width: '100%',
   fontSize: 15,
   color: colors.text,
+  '& textarea': {
+    '&::-webkit-scrollbar': { width: 4 },
+    '&::-webkit-scrollbar-track': { background: 'transparent' },
+    '&::-webkit-scrollbar-thumb': { background: colors.border, borderRadius: radius.sm },
+  },
 }
 
 const messageInputWrapSx: SystemStyleObject<Theme> = {
   display: 'flex',
-  alignItems: 'center',
+  alignItems: 'flex-start',
   gap: 1,
-  px: 1.5,
+  px: 1,
   py: 1,
   borderRadius: radius.md,
   border: `1px solid ${colors.inputBorder}`,
@@ -339,17 +427,18 @@ const messageInputWrapSx: SystemStyleObject<Theme> = {
 }
 
 const sendBtnSx: SystemStyleObject<Theme> = {
-  width: 36,
+  width: 30,
   height: 30,
+  flexShrink: 0,
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
   border: 'none',
-  borderRadius: 2.5,
-  backgroundColor: colors.iconMuted,
+  borderRadius: radius.pill,
+  backgroundColor: colors.accent,
   cursor: 'pointer',
-  transition: transitions.background,
+  transition: transitions.backgroundAndOpacity,
   '&:hover': {
-    backgroundColor: colors.iconMutedHover,
+    opacity: 0.9,
   },
 }

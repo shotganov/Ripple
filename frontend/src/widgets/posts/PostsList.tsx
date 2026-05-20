@@ -71,7 +71,7 @@ export const PostsList = ({
           menu={
             <PostMenu
               postId={post.id}
-              isOwnPost={post.user.id === currentUser?.id}
+              isOwnPost={currentUser?.role === 'ADMIN' || post.user.id === currentUser?.id}
               showReport={showReport}
               onReport={() => setReportPostId(post.id)}
             />

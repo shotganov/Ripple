@@ -10,6 +10,7 @@ import ProfileFilledIcon from '@shared/assets/icons/icon-profile-filled.svg?reac
 import SearchIcon from '@shared/assets/icons/icon-search.svg?react'
 import SearchFilledIcon from '@shared/assets/icons/icon-search-filled.svg?react'
 import ReportIcon from '@shared/assets/icons/icon-report.svg?react'
+import ReportActiveIcon from '@shared/assets/icons/icon-report-active.svg?react'
 import StatsIcon from '@shared/assets/icons/icon-stats.svg?react'
 import StatsFilledIcon from '@shared/assets/icons/icon-stats-filled.svg?react'
 import { routes } from '@shared/config/routes'
@@ -26,11 +27,29 @@ export type SideBarMenuItem = {
 }
 
 export const menuItems: SideBarMenuItem[] = [
-  { text: 'Главная', icon: HomeIcon, iconActive: HomeFilledIcon, path: routes.feed, userOnly: true },
+  { text: 'Главная', icon: HomeIcon, iconActive: HomeFilledIcon, path: routes.feed },
   { text: 'Поиск', icon: SearchIcon, iconActive: SearchFilledIcon, path: routes.search },
-  { text: 'Уведомления', icon: NotificationIcon, iconActive: NotificationFilledIcon, path: routes.notifications, userOnly: true },
+  {
+    text: 'Уведомления',
+    icon: NotificationIcon,
+    iconActive: NotificationFilledIcon,
+    path: routes.notifications,
+    userOnly: true,
+  },
   { text: 'Чаты', icon: ChatIcon, iconActive: ChatFilledIcon, path: routes.chat, userOnly: true },
-  { text: 'Профиль', icon: ProfileIcon, iconActive: ProfileFilledIcon, path: '/profile/:id', userOnly: true },
-  { text: 'Жалобы', icon: ReportIcon, path: routes.adminReports, adminOnly: true },
-  { text: 'Статистика', icon: StatsIcon, iconActive: StatsFilledIcon, path: routes.adminStats, adminOnly: true },
+  {
+    text: 'Профиль',
+    icon: ProfileIcon,
+    iconActive: ProfileFilledIcon,
+    path: '/profile/:id',
+    userOnly: true,
+  },
+  { text: 'Жалобы', icon: ReportIcon, iconActive: ReportActiveIcon, path: routes.adminReports, adminOnly: true },
+  {
+    text: 'Статистика',
+    icon: StatsIcon,
+    iconActive: StatsFilledIcon,
+    path: routes.adminStats,
+    adminOnly: true,
+  },
 ]

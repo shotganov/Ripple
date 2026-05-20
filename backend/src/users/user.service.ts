@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ConflictException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -17,6 +18,7 @@ const publicUserSelect = {
   avatar: true,
   coverImage: true,
   bio: true,
+  role: true,
 } as const;
 
 type PublicUser = {
@@ -113,6 +115,17 @@ export class UsersService {
         );
       }
       data.username = username;
+    }
+
+    if (dto.tag !== undefined) {
+      const tag = dto.tag.trim();
+      if (tag !== user.tag) {
+        const existing = await this.prisma.user.findUnique({ where: { tag } });
+        if (existing) {
+          throw new ConflictException('Этот тег уже занят');
+        }
+      }
+      data.tag = tag;
     }
 
     if (dto.bio !== undefined) {

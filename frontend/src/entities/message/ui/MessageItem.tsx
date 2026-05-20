@@ -17,11 +17,12 @@ export const MessageItem = memo(({ message, isMine }: Props) => {
           width: 'fit-content',
           py: 1,
           px: 1.25,
-          backgroundColor: isMine ? colors.comment : '#64748b',
+          backgroundColor: isMine ? colors.accent : '#64748b',
           maxWidth: '400px',
           borderRadius: 3,
           color: 'white',
           wordBreak: 'break-word',
+          whiteSpace: 'pre-wrap',
           fontSize: 15,
         }}
       >

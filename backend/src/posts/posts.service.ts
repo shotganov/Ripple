@@ -109,7 +109,7 @@ export class PostsService {
     const posts = await this.prisma.post.findMany({
       where,
       include: postInclude(currentUserId),
-      orderBy: { id: 'desc' },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       take,
       ...(cursor
         ? { cursor: { id: cursor }, skip: 1 }

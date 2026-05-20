@@ -2,7 +2,8 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
 }
 
 datasource db {
@@ -41,11 +42,13 @@ model User {
   role                  Role           @default(USER)
   username              String         @db.VarChar(50)
   tag                   String         @unique @db.VarChar(30)
+  email                 String         @unique @db.VarChar(254)
   passwordHash          String         @map("password_hash") @db.VarChar(256)
   avatar                String         @default("default.jpg") @db.VarChar(500)
   coverImage            String?        @map("cover_image") @db.VarChar(500)
   bio                   String?        @db.VarChar(160)
   createdAt             DateTime       @default(now()) @map("created_at")
+  reportsSeenAt         DateTime?      @map("reports_seen_at")
   posts                 Post[]
   comments              Comment[]
   likes                 Like[]
@@ -170,17 +173,17 @@ model Message {
 }
 
 model Report {
-  id          Int          @id @default(autoincrement())
-  reporterId  Int          @map("reporter_id")
-  postId      Int?         @map("post_id")
-  commentId   Int?         @map("comment_id")
-  reason      ReportReason
-  status      ReportStatus @default(PENDING)
-  createdAt   DateTime     @default(now()) @map("created_at")
-  resolvedAt  DateTime?    @map("resolved_at")
-  reporter    User         @relation("reportReporter", fields: [reporterId], references: [id], onDelete: Cascade)
-  post        Post?        @relation(fields: [postId], references: [id], onDelete: Cascade)
-  comment     Comment?     @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  id         Int          @id @default(autoincrement())
+  reporterId Int          @map("reporter_id")
+  postId     Int?         @map("post_id")
+  commentId  Int?         @map("comment_id")
+  reason     ReportReason
+  status     ReportStatus @default(PENDING)
+  createdAt  DateTime     @default(now()) @map("created_at")
+  resolvedAt DateTime?    @map("resolved_at")
+  reporter   User         @relation("reportReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  post       Post?        @relation(fields: [postId], references: [id], onDelete: Cascade)
+  comment    Comment?     @relation(fields: [commentId], references: [id], onDelete: Cascade)
 
   @@unique([reporterId, postId])
   @@unique([reporterId, commentId])

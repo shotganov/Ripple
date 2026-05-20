@@ -1,120 +1,112 @@
-import { Box, ButtonBase } from '@mui/material'
+import { Box, ButtonBase, Chip } from '@mui/material'
 import type { Theme } from '@mui/material'
 import type { SystemStyleObject } from '@mui/system'
 import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { Avatar, UserInline } from '@shared/ui'
 import { colors, radius, transitions } from '@shared/styles'
 import { routes } from '@shared/config/routes'
 import { useDeletePost } from '@features/posts'
 import { useDeleteComment } from '@features/comments'
 import { PostComponent } from '@entities/post'
 import { CommentItem } from '@entities/comment'
-import { reportReasonLabels, type AdminReport } from '../model/types'
-import { removeReportFromCache, useDismissReport } from '../hooks/useReports'
+import { reportReasonLabels, type ReportGroup } from '../model/types'
+import { removeGroupFromCache, useDismissByTarget } from '../hooks/useReports'
 
 type Props = {
-  report: AdminReport
+  group: ReportGroup
   readonly?: boolean
   isLast?: boolean
 }
 
-const statusLabel: Record<AdminReport['status'], string> = {
-  PENDING: 'Открыта',
-  RESOLVED: 'Контент удалён',
-  DISMISSED: 'Закрыта',
-}
-
-const statusColor: Record<AdminReport['status'], string> = {
-  PENDING: colors.accent,
-  RESOLVED: colors.like,
-  DISMISSED: colors.textMuted,
-}
-
-export const AdminReportRow = ({ report, readonly = false, isLast = false }: Props) => {
+export const AdminReportRow = ({ group, readonly = false, isLast = false }: Props) => {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const dismiss = useDismissReport()
+  const dismiss = useDismissByTarget()
+  const isPost = group.type === 'post'
+  const target = isPost ? group.post : group.comment
+  const postId = isPost ? group.targetId : (group.comment?.postId ?? 0)
   const deletePost = useDeletePost()
-  const deleteComment = useDeleteComment(report.comment?.postId ?? 0)
-
-  const target = report.post
-    ? { kind: 'post' as const, ...report.post }
-    : report.comment
-      ? { kind: 'comment' as const, ...report.comment }
-      : null
+  const deleteComment = useDeleteComment(isPost ? 0 : (group.comment?.postId ?? 0))
 
   if (!target) return null
-
-  const openPostId = target.kind === 'post' ? target.id : target.postId
 
   return (
     <Box sx={[rowSx, isLast && lastRowSx]}>
       <Box sx={rowHeaderSx}>
-        <Avatar src={report.reporter.avatar} size={48} />
         <Box sx={{ flex: 1, minWidth: 0 }}>
-          <UserInline
-            username={report.reporter.username}
-            tag={report.reporter.tag}
-            to={routes.profile(report.reporter.id)}
-          />
           <Box sx={metaSx}>
-            пожаловался(ась) на {target.kind === 'post' ? 'пост' : 'комментарий'} —{' '}
-            <b>{reportReasonLabels[report.reason]}</b>
+            {isPost ? 'Пост' : 'Комментарий'} — {group.reportCount}{' '}
+            {group.reportCount === 1 ? 'жалоба' : group.reportCount < 5 ? 'жалобы' : 'жалоб'}
           </Box>
-        </Box>
-        <Box sx={{ ...statusBadgeSx, color: statusColor[report.status] }}>
-          {statusLabel[report.status]}
+          <Box sx={reasonsSx}>
+            {group.reasons.map(r => (
+              <Chip key={r} label={reportReasonLabels[r]} size="small" sx={chipSx} />
+            ))}
+          </Box>
         </Box>
       </Box>
 
-      {target.kind === 'post' ? (
-        <Box sx={postWrapSx}>
+      {isPost && group.post ? (
+        <ButtonBase
+          onClick={e => {
+            if ((e.target as HTMLElement).closest('a')) return
+            navigate(routes.post(postId))
+          }}
+          sx={contentWrapSx}
+        >
           <PostComponent
             post={{
-              id: target.id,
-              content: target.content,
-              images: target.images,
-              createdAt: target.createdAt,
-              likes: target.likes,
-              comments: target.comments,
+              id: group.post.id,
+              content: group.post.content,
+              images: group.post.images,
+              createdAt: group.post.createdAt,
+              likes: group.post.likes,
+              comments: group.post.comments,
               isLiked: false,
-              user: target.user,
+              user: group.post.user,
             }}
           />
-        </Box>
-      ) : (
-        <Box sx={commentWrapSx}>
+        </ButtonBase>
+      ) : !isPost && group.comment ? (
+        <ButtonBase
+          onClick={e => {
+            if ((e.target as HTMLElement).closest('a')) return
+            navigate(`${routes.post(postId)}#comment-${group.comment!.id}`)
+          }}
+          sx={contentWrapSx}
+        >
           <CommentItem
             comment={{
-              id: target.id,
-              content: target.content,
-              user: target.user,
+              id: group.comment.id,
+              content: group.comment.content,
+              createdAt: group.comment.createdAt,
+              user: group.comment.user,
             }}
           />
-        </Box>
-      )}
+        </ButtonBase>
+      ) : null}
 
       {!readonly && (
         <Box sx={actionsSx}>
-          <ButtonBase onClick={() => navigate(routes.post(openPostId))} sx={secondaryBtnSx}>
-            Открыть
+          <ButtonBase
+            onClick={() => dismiss.mutate({ type: group.type, targetId: group.targetId })}
+            sx={secondaryBtnSx}
+          >
+            Закрыть
           </ButtonBase>
-          <ButtonBase onClick={() => dismiss.mutate(report.id)} sx={secondaryBtnSx}>
-            Закрыть жалобу
-          </ButtonBase>
+
           <ButtonBase
             onClick={() => {
-              const onSuccess = () => removeReportFromCache(queryClient, report.id)
-              if (target.kind === 'post') {
-                deletePost.mutate(target.id, { onSuccess })
+              const onSuccess = () => removeGroupFromCache(queryClient, group.type, group.targetId)
+              if (isPost) {
+                deletePost.mutate(group.targetId, { onSuccess })
               } else {
-                deleteComment.mutate(target.id, { onSuccess })
+                deleteComment.mutate(group.targetId, { onSuccess })
               }
             }}
             sx={dangerBtnSx}
           >
-            {target.kind === 'post' ? 'Удалить пост' : 'Удалить комментарий'}
+            Удалить
           </ButtonBase>
         </Box>
       )}
@@ -145,25 +137,30 @@ const rowHeaderSx: SystemStyleObject<Theme> = {
 
 const metaSx: SystemStyleObject<Theme> = {
   fontSize: 14,
-  color: colors.textMuted,
-  mt: 0.25,
-}
-
-const statusBadgeSx: SystemStyleObject<Theme> = {
-  fontSize: 12,
   fontWeight: 700,
-  whiteSpace: 'nowrap',
-  alignSelf: 'flex-start',
+  color: colors.text,
+  mb: 0.5,
 }
 
-const postWrapSx: SystemStyleObject<Theme> = {
-  border: `1px solid ${colors.border}`,
-  borderRadius: radius.md,
-  overflow: 'hidden',
-  '& > div:first-of-type': { borderBottom: 0 },
+const reasonsSx: SystemStyleObject<Theme> = {
+  display: 'flex',
+  flexWrap: 'wrap',
+  gap: 0.5,
 }
 
-const commentWrapSx: SystemStyleObject<Theme> = {
+const chipSx: SystemStyleObject<Theme> = {
+  fontSize: 12,
+  height: 22,
+  backgroundColor: colors.inputBg,
+  color: colors.textMuted,
+}
+
+const contentWrapSx: SystemStyleObject<Theme> = {
+  display: 'flex',
+  width: '100%',
+  alignItems: 'flex-start',
+  justifyContent: 'flex-start',
+  textAlign: 'left',
   border: `1px solid ${colors.border}`,
   borderRadius: radius.md,
   overflow: 'hidden',

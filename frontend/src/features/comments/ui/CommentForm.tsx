@@ -1,9 +1,12 @@
-import { Box, ButtonBase, InputBase, Paper } from '@mui/material'
+import { Box, ButtonBase, ClickAwayListener, IconButton, InputBase, Paper } from '@mui/material'
+import SendIcon from '@shared/assets/icons/icon-send.svg?react'
+import EmojiIcon from '@shared/assets/icons/icon-emoji-gray.svg?react'
 import type { Theme } from '@mui/material'
 import type { SystemStyleObject } from '@mui/system'
-import { colors, transitions } from '@shared/styles/tokens'
-import SocialIcon from '@shared/assets/icons/icon-social.svg'
-import { useState } from 'react'
+import { colors, radius, transitions } from '@shared/styles/tokens'
+import { zIndex } from '@shared/styles'
+import { useState, useRef } from 'react'
+import EmojiPicker, { type EmojiClickData } from 'emoji-picker-react'
 import { useSelector } from 'react-redux'
 import { selectUser } from '@entities/user'
 import { resolveAssetUrl } from '@shared/config'
@@ -20,7 +23,13 @@ type Props = {
 export const CommentForm = ({ postId }: Props) => {
   const user = useSelector(selectUser)
   const [text, setText] = useState('')
+  const [emojiOpen, setEmojiOpen] = useState(false)
+  const wrapRef = useRef<HTMLDivElement | null>(null)
   const createComment = useCreateComment(postId)
+
+  const handleEmojiClick = (data: EmojiClickData) => {
+    setText(prev => prev + data.emoji)
+  }
 
   const trimmedLength = text.trim().length
   const isTooLong = text.length > MAX_LENGTH
@@ -42,26 +51,51 @@ export const CommentForm = ({ postId }: Props) => {
     <Box
       sx={{
         display: 'flex',
-        gap: 2,
+        gap: 1.5,
         p: 2,
         px: 1.5,
-        alignItems: 'center',
+        alignItems: 'flex-start',
         border: `1px solid ${colors.border}`,
         borderTop: 0,
         backgroundColor: colors.surface,
       }}
     >
-      <Avatar src={resolveAssetUrl(user?.avatar) || SocialIcon} size={48} />
+      <Avatar src={resolveAssetUrl(user?.avatar)} size={48} />
 
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, width: '100%' }}>
+      <Box
+        ref={wrapRef}
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 0.5,
+          width: '100%',
+          position: 'relative',
+        }}
+      >
+        {emojiOpen && (
+          <ClickAwayListener onClickAway={() => setEmojiOpen(false)}>
+            <Box
+              sx={{
+                position: 'absolute',
+                top: '110%',
+                left: 0,
+                zIndex: zIndex.modal,
+                transform: 'scale(0.8)',
+                transformOrigin: 'top left',
+              }}
+            >
+              <EmojiPicker previewConfig={{ showPreview: false }} onEmojiClick={handleEmojiClick} />
+            </Box>
+          </ClickAwayListener>
+        )}
         <Paper
           elevation={0}
           sx={{
             display: 'flex',
-            alignItems: 'flex-end',
+            alignItems: 'flex-start',
             gap: 1,
             width: '100%',
-            px: 1.75,
+            px: 1,
             py: 1,
             borderRadius: 3,
             border: `1px solid ${isTooLong ? colors.error : colors.inputBorder}`,
@@ -72,6 +106,24 @@ export const CommentForm = ({ postId }: Props) => {
             },
           }}
         >
+          <IconButton
+            disableRipple
+            onClick={() => setEmojiOpen(prev => !prev)}
+            sx={{
+              p: 0,
+              width: 24,
+              height: 24,
+              color: colors.textMuted,
+              opacity: 0.8,
+              flexShrink: 0,
+              mt: '3px',
+              borderRadius: radius.pill,
+              '&:hover': { backgroundColor: colors.inputFocusBg },
+            }}
+          >
+            <EmojiIcon width={22} height={22} />
+          </IconButton>
+
           <InputBase
             multiline
             maxRows={6}
@@ -90,25 +142,20 @@ export const CommentForm = ({ postId }: Props) => {
             onClick={handleSendComment}
             disabled={!canSend}
             sx={{
-              px: 1.5,
-              py: 0.875,
-              borderRadius: 2.5,
-              fontSize: 14,
-              fontWeight: 700,
-              lineHeight: 1.2,
-              color: colors.surface,
-              backgroundColor: colors.iconMuted,
-              transition: transitions.backgroundAndBorder,
-              '&:hover': {
-                backgroundColor: colors.accentHover,
-              },
-              '&.Mui-disabled': {
-                color: colors.surface,
-                opacity: 0.45,
-              },
+              width: 30,
+              height: 30,
+              flexShrink: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: '50%',
+              backgroundColor: colors.accent,
+              transition: transitions.backgroundAndOpacity,
+              '&:hover': { opacity: 0.9 },
+              '&.Mui-disabled': { opacity: 0.8 },
             }}
           >
-            Отправить
+            <SendIcon width={20} height={20} />
           </ButtonBase>
         </Paper>
 

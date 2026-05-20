@@ -11,21 +11,21 @@ const tabs = [
 ]
 
 export const AdminReportsLayout = () => (
-  <Box sx={pageSx}>
-    <StickyTopBar sx={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', p: 0 }}>
-      <Box sx={tabsRowSx}>
-        {tabs.map(t => (
-          <ButtonBase key={t.to} component={NavLink} to={t.to} end={t.end} sx={tabSx}>
-            <Box component="span" sx={tabLabelSx}>
-              {t.label}
-            </Box>
-          </ButtonBase>
-        ))}
-      </Box>
-    </StickyTopBar>
-    <Outlet />
-  </Box>
-)
+    <Box sx={pageSx}>
+      <StickyTopBar sx={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', p: 0 }}>
+        <Box sx={tabsRowSx}>
+          {tabs.map(t => (
+            <ButtonBase key={t.to} component={NavLink} to={t.to} end={t.end} sx={tabSx}>
+              <Box component="span" sx={tabLabelSx}>
+                {t.label}
+              </Box>
+            </ButtonBase>
+          ))}
+        </Box>
+      </StickyTopBar>
+      <Outlet />
+    </Box>
+  )
 
 const pageSx: SystemStyleObject<Theme> = {
   display: 'flex',

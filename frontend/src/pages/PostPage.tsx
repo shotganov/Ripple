@@ -1,11 +1,11 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Box, ButtonBase } from '@mui/material'
 import type { Theme } from '@mui/material'
 import type { SystemStyleObject } from '@mui/system'
 import { PostActions, PostMenu, usePost } from '@features/posts'
 import { ReportContentModal, type ReportTarget } from '@features/reports'
 import BackIcon from '@shared/assets/icons/icon-back.svg?react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { breakpoints, colors, transitions } from '@shared/styles'
 import { routes } from '@shared/config/routes'
 import { CommentForm } from '@features/comments'
@@ -25,6 +25,18 @@ export const PostPage = () => {
   const comments = useComments(postId)
   const currentUser = useAppSelector(selectUser)
   const commentItems = comments.data?.pages.flatMap(page => page.items) ?? []
+  const { hash } = useLocation()
+
+  useEffect(() => {
+    if (!hash || !hash.startsWith('#comment-')) {
+      window.scrollTo(0, 0)
+      return
+    }
+    if (comments.isLoading) return
+    const el = document.querySelector(hash)
+    if (!el) return
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [hash, comments.isLoading])
 
   const handleNavigateBack = () => {
     if (window.history.length > 1) {
@@ -52,7 +64,7 @@ export const PostPage = () => {
             menu={
               <PostMenu
                 postId={postId}
-                isOwnPost={post.data?.user.id === currentUser?.id}
+                isOwnPost={post.data?.user.id === currentUser?.id || currentUser?.role === 'ADMIN'}
                 onReport={() => setReportTarget({ type: 'post', id: postId })}
                 onDeleted={handleNavigateBack}
               />
@@ -92,6 +104,7 @@ export const PostPage = () => {
               postId={postId}
               commentId={c.id}
               isOwnComment={c.user.id === currentUser?.id}
+              isAdmin={currentUser?.role === 'ADMIN'}
               onReport={() => setReportTarget({ type: 'comment', id: c.id })}
             />
           )}

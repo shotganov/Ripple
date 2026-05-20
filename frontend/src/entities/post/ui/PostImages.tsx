@@ -5,10 +5,10 @@ import { radius } from '@shared/styles'
 
 type PostImagesProps = {
   images: string[]
-  onImageClick: (index: number) => void
+  onImageClick?: (index: number) => void
 }
 
-export const PostImages = ({ images, onImageClick }: PostImagesProps) => {
+export const PostImages = ({ images, onImageClick = () => {} }: PostImagesProps) => {
   const imageCount = images.length
 
   if (imageCount === 1) {

@@ -25,14 +25,14 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>13/13</span>
+                <span class='fraction'>26/26</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>8/8</span>
+                <span class='fraction'>18/18</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>11/11</span>
+                <span class='fraction'>20/20</span>
             </div>
         
             
@@ -81,39 +81,84 @@
 <a name='L16'></a><a href='#L16'>16</a>
 <a name='L17'></a><a href='#L17'>17</a>
 <a name='L18'></a><a href='#L18'>18</a>
-<a name='L19'></a><a href='#L19'>19</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<a name='L19'></a><a href='#L19'>19</a>
+<a name='L20'></a><a href='#L20'>20</a>
+<a name='L21'></a><a href='#L21'>21</a>
+<a name='L22'></a><a href='#L22'>22</a>
+<a name='L23'></a><a href='#L23'>23</a>
+<a name='L24'></a><a href='#L24'>24</a>
+<a name='L25'></a><a href='#L25'>25</a>
+<a name='L26'></a><a href='#L26'>26</a>
+<a name='L27'></a><a href='#L27'>27</a>
+<a name='L28'></a><a href='#L28'>28</a>
+<a name='L29'></a><a href='#L29'>29</a>
+<a name='L30'></a><a href='#L30'>30</a>
+<a name='L31'></a><a href='#L31'>31</a>
+<a name='L32'></a><a href='#L32'>32</a>
+<a name='L33'></a><a href='#L33'>33</a>
+<a name='L34'></a><a href='#L34'>34</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">4x</span>
-<span class="cline-any cline-yes">4x</span>
-<span class="cline-any cline-yes">4x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">4x</span>
-<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">13x</span>
+<span class="cline-any cline-yes">13x</span>
+<span class="cline-any cline-yes">13x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">13x</span>
+<span class="cline-any cline-yes">12x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">13x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">13x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">5x</span>
 <span class="cline-any cline-yes">4x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">13x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">const USERNAME_MAX = 50
 const BIO_MAX = 160
+const TAG_MIN = 3
+const TAG_MAX = 30
+const TAG_PATTERN = /^[a-zA-Z0-9_]+$/
 &nbsp;
-export type ProfileFormErrors = { username?: string; bio?: string }
+export type ProfileFormErrors = { username?: string; bio?: string; tag?: string }
 &nbsp;
-export function validateProfile(data: { username: string; bio?: string }): ProfileFormErrors {
+export function validateProfile(data: {
+  username: string
+  bio?: string
+  tag?: string
+}): ProfileFormErrors {
   const errors: ProfileFormErrors = {}
   const username = data.username.trim()
   const bio = data.bio ?? ''
 &nbsp;
   if (!username) errors.username = 'Имя не может быть пустым'
-  else if (data.username.length &gt; USERNAME_MAX)
+  else if (username.length &gt; USERNAME_MAX)
     errors.username = `Имя не может быть длиннее ${USERNAME_MAX} символов`
 &nbsp;
   if (bio.length &gt; BIO_MAX) errors.bio = `Биография не может быть длиннее ${BIO_MAX} символов`
+&nbsp;
+  if (data.tag !== undefined) {
+    const tag = data.tag.trim()
+    if (!tag) errors.tag = 'Тег не может быть пустым'
+    else if (tag.length &lt; TAG_MIN) errors.tag = `Тег должен быть не короче ${TAG_MIN} символов`
+    else if (tag.length &gt; TAG_MAX) errors.tag = `Тег должен быть не длиннее ${TAG_MAX} символов`
+    else if (!TAG_PATTERN.test(tag)) errors.tag = 'Тег может содержать только буквы, цифры и _'
+  }
 &nbsp;
   return errors
 }
@@ -124,7 +169,7 @@ export function validateProfile(data: { username: string; bio?: string }): Profi
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-05-14T18:10:01.943Z
+                at 2026-05-17T19:55:17.572Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

@@ -1,9 +1,4 @@
-export type ChatCompanion = {
-  id: number
-  username: string
-  tag: string
-  avatar: string | null
-}
+import type { User } from '@shared/model'
 
 export type ChatLastMessage = {
   id: number
@@ -15,7 +10,7 @@ export type ChatLastMessage = {
 
 export type Chat = {
   id: number
-  companion: ChatCompanion
+  companion: User
   lastMessage: ChatLastMessage | null
   unreadCount: number
 }

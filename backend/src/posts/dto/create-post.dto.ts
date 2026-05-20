@@ -2,6 +2,6 @@ import { IsString, MaxLength } from 'class-validator';
 
 export class CreatePostDto {
   @IsString()
-  @MaxLength(2000)
+  @MaxLength(300)
   content: string;
 }

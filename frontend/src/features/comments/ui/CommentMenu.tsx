@@ -7,6 +7,7 @@ type Props = {
   postId: number
   commentId: number
   isOwnComment?: boolean
+  isAdmin?: boolean
   showReport?: boolean
   onReport: () => void
 }
@@ -15,15 +16,18 @@ export const CommentMenu = ({
   postId,
   commentId,
   isOwnComment = false,
+  isAdmin = false,
   showReport = true,
   onReport,
 }: Props) => {
   const deleteComment = useDeleteComment(postId)
 
+  const canDelete = isOwnComment || isAdmin
+
   return (
     <DropdownMenu>
       {close =>
-        isOwnComment ? (
+        canDelete ? (
           <DropdownMenuItem
             icon={TrashIcon}
             danger

@@ -30,26 +30,38 @@ export type AdminUser = {
   avatar: string
 }
 
-export type AdminReport = {
+export type ReportedPost = {
   id: number
-  reason: ReportReason
-  status: ReportStatus
+  content: string
+  images: string[]
   createdAt: string
-  resolvedAt: string | null
-  reporter: AdminUser
-  post: {
-    id: number
-    content: string
-    images: string[]
-    createdAt: string
-    likes: number
-    comments: number
-    user: AdminUser
-  } | null
-  comment: {
-    id: number
-    content: string
-    postId: number
-    user: AdminUser
-  } | null
+  likes: number
+  comments: number
+  user: AdminUser
 }
+
+export type ReportedComment = {
+  id: number
+  content: string
+  postId: number
+  createdAt: string
+  user: AdminUser
+}
+
+export type ReportGroup =
+  | {
+      type: 'post'
+      targetId: number
+      reportCount: number
+      latestReportAt: string
+      reasons: ReportReason[]
+      post: ReportedPost | null
+    }
+  | {
+      type: 'comment'
+      targetId: number
+      reportCount: number
+      latestReportAt: string
+      reasons: ReportReason[]
+      comment: ReportedComment | null
+    }

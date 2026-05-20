@@ -1,10 +1,9 @@
-import { IsString, MaxLength, MinLength } from 'class-validator';
+import { IsEmail, IsString, MaxLength, MinLength } from 'class-validator';
 
 export class LoginDto {
-  @IsString({ message: 'Логин должен быть строкой' })
-  @MinLength(3, { message: 'Логин должен быть не короче 3 символов' })
-  @MaxLength(30, { message: 'Логин должен быть не длиннее 30 символов' })
-  tag: string;
+  @IsEmail({}, { message: 'Введите корректный email' })
+  @MaxLength(254, { message: 'Email слишком длинный' })
+  email: string;
 
   @IsString({ message: 'Пароль должен быть строкой' })
   @MinLength(1, { message: 'Введите пароль' })

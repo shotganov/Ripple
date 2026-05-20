@@ -10,6 +10,7 @@ import { selectToken } from '@features/auth'
 import { selectUser } from '@entities/user'
 import { useSocketSync } from '@features/chats'
 import { connectSocket, disconnectSocket } from '@shared/api'
+import type { SystemStyleObject, Theme } from '@mui/system'
 
 export const MainLayout = () => {
   const { pathname } = useLocation()
@@ -72,6 +73,15 @@ export const MainLayout = () => {
       </Container>
 
       {!isChatsPage && !isAdmin && <SearchPanel isSearchPage={isSearchPage} />}
+      {isAdmin && <Box sx={wrapSx}></Box>}
     </Box>
   )
+}
+
+const wrapSx: SystemStyleObject<Theme> = {
+  width: 250,
+  flexShrink: 0,
+  [breakpoints.compactSidebar]: {
+    display: 'none',
+  },
 }

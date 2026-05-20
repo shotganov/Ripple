@@ -6,7 +6,7 @@ import { useAppSelector } from '@shared/hooks'
 import { PostsList } from '@widgets/posts'
 import { Profile, ProfileSkeleton } from '@widgets/profile'
 import { useNavigate, useParams } from 'react-router-dom'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { EditProfileModal, useGetUser } from '@features/profile'
 import { useUserPosts } from '@features/posts'
 import { PostSkeletonList } from '@entities/post'
@@ -25,6 +25,10 @@ export const ProfilePage = () => {
   const [isEditOpen, setIsEditOpen] = useState(false)
   const profileQuery = useGetUser(profileId)
   const postsQuery = useUserPosts(profileId)
+
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [profileId])
 
   if (!me) return null
 
@@ -63,6 +67,7 @@ export const ProfilePage = () => {
         <Profile
           user={profile}
           isOwnProfile={isOwnProfile}
+          isAdmin={me.role === 'ADMIN'}
           onEditClick={() => setIsEditOpen(true)}
         />
       )}

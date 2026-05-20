@@ -6,6 +6,7 @@ import {
   HttpStatus,
   Logger,
 } from '@nestjs/common';
+import * as Sentry from '@sentry/nestjs';
 import { Prisma } from '@prisma/client';
 import type { Request, Response } from 'express';
 
@@ -37,6 +38,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
     };
 
     if (statusCode >= 500) {
+      Sentry.captureException(exception)
       this.logger.error(
         `${request.method} ${request.url} → ${statusCode} ${message}`,
         exception instanceof Error ? exception.stack : undefined,

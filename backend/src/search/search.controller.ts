@@ -31,6 +31,7 @@ export class SearchController {
       user.userId,
       query.cursor,
       query.limit,
+      user.role,
     );
   }
 }

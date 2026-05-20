@@ -1,4 +1,4 @@
-import { IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
 
 export class UpdateUserDto {
   @IsOptional()
@@ -6,6 +6,13 @@ export class UpdateUserDto {
   @MinLength(1)
   @MaxLength(50)
   username?: string;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(3, { message: 'Тег должен быть не короче 3 символов' })
+  @MaxLength(30, { message: 'Тег должен быть не длиннее 30 символов' })
+  @Matches(/^[a-zA-Z0-9_]+$/, { message: 'Тег может содержать только буквы, цифры и _' })
+  tag?: string;
 
   @IsOptional()
   @IsString()

@@ -1,8 +1,10 @@
 import { Module } from '@nestjs/common';
+import { SentryModule } from '@sentry/nestjs/setup';
 import { LoggerModule } from 'nestjs-pino';
 import { PrometheusModule } from '@willsoto/nestjs-prometheus';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { HttpMetricsInterceptor } from './shared/interceptors/http-metrics.interceptor';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { PostsModule } from './posts/posts.module';
@@ -14,8 +16,8 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { ChatsModule } from './chats/chats.module';
 import { MessagesModule } from './messages/messages.module';
 import { ReportsModule } from './reports/reports.module';
-import { AdminModule } from './admin/admin.module';
 import { MetricsModule } from './metrics/metrics.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -27,7 +29,11 @@ import { MetricsModule } from './metrics/metrics.module';
             {
               target: 'pino-pretty',
               level: 'info',
-              options: { colorize: true, singleLine: true, translateTime: 'HH:MM:ss' },
+              options: {
+                colorize: true,
+                singleLine: true,
+                translateTime: 'HH:MM:ss',
+              },
             },
             {
               target: 'pino-roll',
@@ -46,13 +52,22 @@ import { MetricsModule } from './metrics/metrics.module';
             method: req.method,
             url: req.url,
           }),
-          res: (res: { statusCode: number }) => ({ statusCode: res.statusCode }),
+          res: (res: { statusCode: number }) => ({
+            statusCode: res.statusCode,
+          }),
         },
-        autoLogging: { ignore: (req) => (req.url ?? '').startsWith('/metrics') },
+        autoLogging: {
+          ignore: (req) => (req.url ?? '').startsWith('/metrics'),
+        },
       },
     }),
-    PrometheusModule.register({ path: '/metrics', defaultMetrics: { enabled: true } }),
+    PrometheusModule.register({
+      path: '/metrics',
+      defaultMetrics: { enabled: true },
+    }),
+    SentryModule.forRoot(),
     MetricsModule,
+    AdminModule,
     PrismaModule,
     UsersModule,
     AuthModule,
@@ -64,11 +79,10 @@ import { MetricsModule } from './metrics/metrics.module';
     ChatsModule,
     MessagesModule,
     ReportsModule,
-    AdminModule,
   ],
   // глобальный exception filter подключается в main.ts
 
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, HttpMetricsInterceptor],
 })
 export class AppModule {}

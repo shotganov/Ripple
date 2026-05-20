@@ -9,9 +9,11 @@ import { zIndex } from '../styles/zIndex'
 
 type DropdownMenuProps = {
   children: ReactNode | ((close: () => void) => ReactNode)
+  triggerSx?: SystemStyleObject<Theme>
+  slotSx?: SystemStyleObject<Theme>
 }
 
-export const DropdownMenu = ({ children }: DropdownMenuProps) => {
+export const DropdownMenu = ({ children, triggerSx: triggerSxProp, slotSx }: DropdownMenuProps) => {
   const [position, setPosition] = useState<{ top: number; left: number } | null>(null)
   const triggerRef = useRef<HTMLButtonElement | null>(null)
 
@@ -47,8 +49,8 @@ export const DropdownMenu = ({ children }: DropdownMenuProps) => {
 
   return (
     <>
-      <Box sx={triggerSlotSx}>
-        <ButtonBase ref={triggerRef} onClick={handleToggle} sx={triggerSx}>
+      <Box sx={slotSx ? { ...triggerSlotSx, ...slotSx } : triggerSlotSx}>
+        <ButtonBase ref={triggerRef} onClick={handleToggle} sx={triggerSxProp ? { ...triggerSx, ...triggerSxProp } : triggerSx}>
           <Box component={MoreIcon} sx={{ width: 14, height: 14, display: 'block' }} />
         </ButtonBase>
       </Box>
@@ -84,6 +86,8 @@ const triggerSlotSx: SystemStyleObject<Theme> = {
   position: 'relative',
   width: 14,
   height: 14,
+  alignSelf: 'center',
+  flexShrink: 0,
 }
 
 const triggerSx: SystemStyleObject<Theme> = {

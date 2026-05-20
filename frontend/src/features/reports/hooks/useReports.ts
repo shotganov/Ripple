@@ -7,7 +7,7 @@ import {
 } from '@tanstack/react-query'
 import {
   createReportRequest,
-  dismissReportRequest,
+  dismissByTargetRequest,
   listReportsRequest,
   type ReportsPage,
 } from '../api/reportsApi'
@@ -27,9 +27,12 @@ export const useReports = (filter?: ReportsFilter) =>
   useInfiniteQuery({
     queryKey: reportsKey(filter),
     queryFn: ({ pageParam }) =>
-      listReportsRequest(pageParam ?? undefined, PAGE_SIZE, filter),
-    initialPageParam: null as number | null,
-    getNextPageParam: (p: ReportsPage) => p.nextCursor,
+      listReportsRequest(pageParam ?? 0, PAGE_SIZE, filter),
+    initialPageParam: 0 as number,
+    getNextPageParam: (lastPage: ReportsPage) => {
+      const nextOffset = lastPage.offset + lastPage.limit
+      return nextOffset < lastPage.total ? nextOffset : null
+    },
   })
 
 export const useCreateReport = () =>
@@ -41,7 +44,11 @@ export const useCreateReport = () =>
     }) => createReportRequest(payload),
   })
 
-export const removeReportFromCache = (queryClient: QueryClient, id: number) => {
+export const removeGroupFromCache = (
+  queryClient: QueryClient,
+  type: 'post' | 'comment',
+  targetId: number,
+) => {
   queryClient.setQueriesData<InfiniteData<ReportsPage>>(
     { predicate: q => q.queryKey[0] === 'admin' && q.queryKey[1] === 'reports' },
     old =>
@@ -50,17 +57,19 @@ export const removeReportFromCache = (queryClient: QueryClient, id: number) => {
             ...old,
             pages: old.pages.map(page => ({
               ...page,
-              items: page.items.filter(r => r.id !== id),
+              total: page.total - (page.items.some(g => g.type === type && g.targetId === targetId) ? 1 : 0),
+              items: page.items.filter(g => !(g.type === type && g.targetId === targetId)),
             })),
           }
         : old,
   )
 }
 
-export const useDismissReport = () => {
+export const useDismissByTarget = () => {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (id: number) => dismissReportRequest(id),
-    onSuccess: (_data, id) => removeReportFromCache(queryClient, id),
+    mutationFn: ({ type, targetId }: { type: 'post' | 'comment'; targetId: number }) =>
+      dismissByTargetRequest(type, targetId),
+    onSuccess: (_data, { type, targetId }) => removeGroupFromCache(queryClient, type, targetId),
   })
 }
